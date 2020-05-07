@@ -54,10 +54,6 @@ public class MpttEntity {
 
   @Override
   public String toString() {
-    return "MpttEntity{" +
-        "treeId=" + treeId +
-        ", lft=" + lft +
-        ", rgt=" + rgt +
-        '}';
+    return String.format("[treeId: %d | lft: %d | rgt: %d]", getTreeId(), getLft(), getRgt());
   }
 }

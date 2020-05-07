@@ -3,7 +3,11 @@ package works.hacker.mptt;
 import javax.persistence.EntityManager;
 import javax.persistence.NoResultException;
 import javax.persistence.PersistenceContext;
+import javax.persistence.TypedQuery;
 import javax.transaction.Transactional;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Transactional
 public abstract class MpttRepositoryImpl<T extends MpttEntity, ID> implements MpttRepository<T, ID> {
@@ -31,28 +35,205 @@ public abstract class MpttRepositoryImpl<T extends MpttEntity, ID> implements Mp
 
   private void ensureNodeIsNotAttachedToAnyTree(T node) throws NodeAlreadyAttachedToTree {
     if (node.hasTreeId()) {
-      throw new NodeAlreadyAttachedToTree();
+      throw new NodeAlreadyAttachedToTree(
+          String.format("node already has treeId set to %d", node.getTreeId()));
     }
   }
 
   private void ensureTreeIdIsNotUsed(Long treeId) throws TreeIdAlreadyUsed {
     try {
       findTreeRoot(treeId);
-      throw new TreeIdAlreadyUsed();
+      throw new TreeIdAlreadyUsed(String.format("%d already used in another tree", treeId));
     } catch (NoResultException e) {
-      return;
+      // do nothing;
     }
   }
 
   @Override
   public MpttEntity findTreeRoot(Long treeId) throws NoResultException {
     String query = String.format(
-        "SELECT node FROM %s node " +
-        "WHERE node.treeId = :treeId AND node.lft = 1",
+        "SELECT node FROM %s node" +
+            " WHERE node.treeId = :treeId AND node.lft = 1",
         entityClass.getSimpleName());
-    T root = entityManager.createQuery(query, entityClass)
+    return entityManager.createQuery(query, entityClass)
         .setParameter("treeId", treeId)
         .getSingleResult();
-    return root;
+  }
+
+  @Override
+  public void addChild(T parent, T child) throws NodeNotInTree, NodeAlreadyAttachedToTree {
+    ensureParentIsAttachedToTree(parent);
+    ensureNodeIsNotAttachedToAnyTree(child);
+
+    long childLft;
+    long childRgt;
+
+    T rightMostChild = findRightMostChild(parent);
+
+    if (rightMostChild == null) {
+      childLft = parent.getLft() + 1;
+
+      findByTreeIdAndLftGreaterThanEqual(parent.getTreeId(), childLft)
+          .stream().forEach(n -> n.setLft(n.getLft() + 2L));
+      findByTreeIdAndRgtGreaterThan(parent.getTreeId(), parent.getLft())
+          .stream().forEach(n -> n.setRgt(n.getRgt() + 2L));
+    } else {
+      childLft = rightMostChild.getRgt() + 1;
+
+      findByTreeIdAndLftGreaterThan(parent.getTreeId(), rightMostChild.getRgt())
+          .stream().forEach(n -> n.setLft(n.getLft() + 2L));
+      findByTreeIdAndRgtGreaterThan(parent.getTreeId(), rightMostChild.getRgt())
+          .stream().forEach(n -> n.setRgt(n.getRgt() + 2L));
+    }
+    childRgt = childLft + 1;
+
+    child.setLft(childLft);
+    child.setRgt(childRgt);
+    child.setTreeId(parent.getTreeId());
+
+    entityManager.persist(child);
+  }
+
+  private void ensureParentIsAttachedToTree(T parent) throws NodeNotInTree {
+    if (!parent.hasTreeId()) {
+      throw new NodeNotInTree("Parent node not attached to any tree");
+    }
+  }
+
+
+  @Override
+  public T findRightMostChild(T node) {
+    String query = String.format(
+        "SELECT node FROM %s node" +
+            " WHERE node.treeId = :treeId AND node.rgt = :rgt",
+        entityClass.getSimpleName());
+    return getSingleResultOrNull(
+        entityManager.createQuery(query, entityClass)
+            .setParameter("treeId", node.getTreeId())
+            .setParameter("rgt", node.getRgt() - 1));
+  }
+
+  private T getSingleResultOrNull(TypedQuery<T> query) {
+    try {
+      return query.getSingleResult();
+    } catch (NoResultException e) {
+      return null;
+    }
+  }
+
+  @Override
+  public List<T> findByTreeIdAndLftGreaterThanEqual(Long treeId, Long lft) {
+    String query = String.format(
+        "SELECT node" +
+            " FROM %s node" +
+            " WHERE node.treeId = :treeId" +
+            " AND node.lft >= :lft",
+        entityClass.getSimpleName());
+    return entityManager.createQuery(query, entityClass)
+        .setParameter("treeId", treeId)
+        .setParameter("lft", lft)
+        .getResultList();
+  }
+
+  @Override
+  public List<T> findByTreeIdAndLftGreaterThan(Long treeId, Long lft) {
+    String query = String.format(
+        "SELECT node" +
+            " FROM %s node" +
+            " WHERE node.treeId = :treeId" +
+            " AND node.lft > :lft",
+        entityClass.getSimpleName());
+    return entityManager.createQuery(query, entityClass)
+        .setParameter("treeId", treeId)
+        .setParameter("lft", lft)
+        .getResultList();
+  }
+
+  @Override
+  public List<T> findByTreeIdAndRgtGreaterThan(Long treeId, Long rgt) {
+    String query = String.format(
+        "SELECT node" +
+            " FROM %s node" +
+            " WHERE node.treeId = :treeId" +
+            " AND node.rgt > :rgt",
+        entityClass.getSimpleName());
+    return entityManager.createQuery(query, entityClass)
+        .setParameter("treeId", treeId)
+        .setParameter("rgt", rgt)
+        .getResultList();
+  }
+
+  @Override
+  public List<T> findChildren(T node) {
+    String query = String.format(
+        "SELECT child" +
+            " FROM %s child" +
+            " WHERE child.treeId = :treeId" +
+            " AND child.lft > :lft AND child.rgt < :rgt",
+        entityClass.getSimpleName());
+    List<T> allChildren = entityManager.createQuery(query, entityClass)
+        .setParameter("treeId", node.getTreeId())
+        .setParameter("lft", node.getLft())
+        .setParameter("rgt", node.getRgt())
+        .getResultList();
+    return allChildren.stream()
+        .filter(child -> depth(child, allChildren) == 0L)
+        .collect(Collectors.toList());
+  }
+
+  // TODO: consider using a depth property, instead of computing it on the flight
+  private Long depth(T child, List<T> allChildren) {
+    return allChildren.stream()
+        .filter(node -> node.getLft() < child.getLft() && child.getRgt() < node.getRgt())
+        .count();
+  }
+
+  @Override
+  public String printTree(T node) {
+    String rootString = printRootNode(node);
+
+    List<T> children = findChildren(node);
+    String childrenString = children.isEmpty() ? "" :
+        "\n" +
+            IntStream.range(0, children.size())
+                .mapToObj(i -> i < children.size() - 1 ?
+                    printSubTree(children.get(i), 1, false) :
+                    printSubTree(children.get(i), 1, true))
+                .collect(Collectors.joining("\n"));
+
+    return rootString + childrenString;
+  }
+
+  private String printSubTree(T node, int level, boolean isLast) {
+    List<T> children = findChildren(node);
+    return
+        (isLast ? printLastChildNode(node, level) : printChildNode(node, level)) +
+            (children.isEmpty() ? "" : "\n" +
+                IntStream.range(0, children.size())
+                    .mapToObj(i -> i < children.size() - 1 ?
+                        printSubTree(children.get(i), level + 1, false) :
+                        printSubTree(children.get(i), level + 1, true))
+                    .collect(Collectors.joining("\n")));
+  }
+
+  private String printRootNode(T node) {
+    return String.format(
+        // @formatter:off
+        ".\n" +
+            "└── %s",
+        // @formatter:on
+        node.toString());
+  }
+
+  private String printChildNode(T node, int level) {
+    return String.format("%s├── %s",
+        "    " + "│   ".repeat(level - 1),
+        node.toString());
+  }
+
+  private String printLastChildNode(T node, int level) {
+    return String.format("%s└── %s",
+        "    " + "│   ".repeat(level - 1),
+        node.toString());
   }
 }

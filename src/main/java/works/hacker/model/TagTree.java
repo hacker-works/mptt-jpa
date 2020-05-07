@@ -3,6 +3,7 @@ package works.hacker.model;
 import works.hacker.mptt.MpttEntity;
 
 import javax.persistence.*;
+import java.util.Objects;
 
 @Entity
 public class TagTree extends MpttEntity {
@@ -28,9 +29,16 @@ public class TagTree extends MpttEntity {
 
   @Override
   public String toString() {
-    return "TagTree{" +
-        "id=" + id +
-        ", name='" + name + '\'' +
-        "} " + super.toString();
+    return String.format("%s (id: %d) %s", getName(),  getId(), super.toString());
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    return this.toString().equals(o.toString());
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(this.toString());
   }
 }
