@@ -52,7 +52,7 @@ public abstract class MpttRepositoryImpl<T extends MpttEntity, ID> implements Mp
   }
 
   @Override
-  public MpttEntity findTreeRoot(Long treeId) throws NoResultException {
+  public T findTreeRoot(Long treeId) throws NoResultException {
     var query = String.format(
         "SELECT node FROM %s node" +
             " WHERE node.treeId = :treeId AND node.lft = 1",

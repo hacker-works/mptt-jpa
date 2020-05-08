@@ -64,13 +64,13 @@ public class TagTreeRepoTest {
   public void givenNoTree_whenStartTree_thenOK()
       throws MpttRepository.NodeAlreadyAttachedToTree, MpttRepository.TreeIdAlreadyUsed {
     Long treeId = 100L;
-    TagTree rootNode = new TagTree("root");
+    TagTree root = new TagTree("root");
 
-    tagTreeRepo.startTree(rootNode, treeId);
+    tagTreeRepo.startTree(root, treeId);
 
     assertThat(tagTreeRepo.count(), is(1L));
 
-    TagTree actual = tagTreeRepo.findByName(rootNode.getName());
+    TagTree actual = tagTreeRepo.findByName(root.getName());
     assertThat(actual.getTreeId(), is(100L));
     assertThat(actual.getLft(), is(MpttEntity.DEFAULT_LFT));
     assertThat(actual.getRgt(), is(MpttEntity.DEFAULT_RGT));
@@ -80,27 +80,39 @@ public class TagTreeRepoTest {
   public void givenTree_whenStartTreeWithUsedRootNode_thenError()
       throws MpttRepository.NodeAlreadyAttachedToTree, MpttRepository.TreeIdAlreadyUsed {
     Long treeId1 = 100L;
-    TagTree rootNode1 = new TagTree("root");
-    tagTreeRepo.startTree(rootNode1, treeId1);
+    TagTree root = new TagTree("root");
+    tagTreeRepo.startTree(root, treeId1);
 
     exceptionRule.expect(MpttRepository.NodeAlreadyAttachedToTree.class);
     exceptionRule.expectMessage(String.format("Node already has treeId set to %d", treeId1));
     Long treeId2 = 200L;
-    TagTree rootNode2 = tagTreeRepo.findByName(rootNode1.getName());
+    TagTree rootNode2 = tagTreeRepo.findByName(root.getName());
     tagTreeRepo.startTree(rootNode2, treeId2);
+  }
+
+  @Test
+  public void givenTree_whenFindTreeRoot_thenOK()
+      throws MpttRepository.NodeAlreadyAttachedToTree, MpttRepository.TreeIdAlreadyUsed {
+    Long treeId = 100L;
+    TagTree root = new TagTree("root");
+
+    tagTreeRepo.startTree(root, treeId);
+
+    TagTree actual = tagTreeRepo.findTreeRoot(treeId);
+    assertThat(actual, is(root));
   }
 
   @Test
   public void givenTree_whenStartTreeWithUsedTreeId_thenError()
       throws MpttRepository.NodeAlreadyAttachedToTree, MpttRepository.TreeIdAlreadyUsed {
     Long treeId = 100L;
-    TagTree rootNode1 = new TagTree("root-1");
-    tagTreeRepo.startTree(rootNode1, treeId);
+    TagTree root1 = new TagTree("root-1");
+    tagTreeRepo.startTree(root1, treeId);
 
     exceptionRule.expect(MpttRepository.TreeIdAlreadyUsed.class);
     exceptionRule.expectMessage(String.format("%d already used in another tree", treeId));
-    TagTree rootNode2 = new TagTree("root-2");
-    tagTreeRepo.startTree(rootNode2, treeId);
+    TagTree root2 = new TagTree("root-2");
+    tagTreeRepo.startTree(root2, treeId);
   }
 
   @Test
@@ -761,5 +773,36 @@ public class TagTreeRepoTest {
     // @formatter:on
     String actual = tagTreeRepo.printTree(root);
     assertThat(actual, is(expected));
+  }
+
+  @Test
+  public void givenComplexTree3_whenFindRoot_thenOK()
+      throws MpttRepository.NodeAlreadyAttachedToTree, MpttRepository.TreeIdAlreadyUsed,
+      MpttRepository.NodeNotInTree, MpttRepository.NodeNotChildOfParent {
+    TagTree root = new TagTree("root");
+    tagTreeRepo.startTree(root, 100L);
+
+    TagTree child1 = new TagTree("child-1");
+    tagTreeRepo.addChild(root, child1);
+
+    TagTree subChild1 = new TagTree("subChild-1");
+    tagTreeRepo.addChild(child1, subChild1);
+
+    TagTree subSubChild = new TagTree("subSubChild");
+    tagTreeRepo.addChild(subChild1, subSubChild);
+
+    TagTree subChild2 = new TagTree("subChild-2");
+    tagTreeRepo.addChild(child1, subChild2);
+
+    TagTree child2 = new TagTree("child-2");
+    tagTreeRepo.addChild(root, child2);
+
+    TagTree lastSubChild = new TagTree("lastSubChild");
+    tagTreeRepo.addChild(child2, lastSubChild);
+
+    LOG.debug(String.format("tree to search for root:\n%s", tagTreeRepo.printTree(root)));
+
+    var actual = tagTreeRepo.findTreeRoot(100L);
+    assertThat(actual, is(root));
   }
 }

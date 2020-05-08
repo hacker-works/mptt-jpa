@@ -8,7 +8,7 @@ public interface MpttRepository<T extends MpttEntity, ID> {
 
   void startTree(T node, Long treeId) throws NodeAlreadyAttachedToTree, TreeIdAlreadyUsed;
 
-  MpttEntity findTreeRoot(Long treeId) throws NoResultException;
+  T findTreeRoot(Long treeId) throws NoResultException;
 
   void addChild(T parent, T child) throws NodeNotInTree, NodeAlreadyAttachedToTree;
 
