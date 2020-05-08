@@ -258,9 +258,9 @@ public class TagTreeRepoTest {
     // @formatter:off
     String expected = String.format(
         ".\n" +
-            "└── root (id: %d) [treeId: 100 | lft: 1 | rgt: 6]\n" +
-            "    ├── child-1 (id: %d) [treeId: 100 | lft: 2 | rgt: 3]\n" +
-            "    └── child-2 (id: %d) [treeId: 100 | lft: 4 | rgt: 5]",
+        "└── root (id: %d) [treeId: 100 | lft: 1 | rgt: 6]\n" +
+        "    ├── child-1 (id: %d) [treeId: 100 | lft: 2 | rgt: 3]\n" +
+        "    └── child-2 (id: %d) [treeId: 100 | lft: 4 | rgt: 5]",
         root.getId(),
         child1.getId(),
         child2.getId());
@@ -778,7 +778,7 @@ public class TagTreeRepoTest {
   @Test
   public void givenComplexTree3_whenFindRoot_thenOK()
       throws MpttRepository.NodeAlreadyAttachedToTree, MpttRepository.TreeIdAlreadyUsed,
-      MpttRepository.NodeNotInTree, MpttRepository.NodeNotChildOfParent {
+      MpttRepository.NodeNotInTree {
     TagTree root = new TagTree("root");
     tagTreeRepo.startTree(root, 100L);
 
