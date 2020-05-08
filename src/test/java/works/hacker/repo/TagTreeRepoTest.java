@@ -5,6 +5,8 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
@@ -26,6 +28,8 @@ import static org.hamcrest.Matchers.*;
 @Transactional
 @DirtiesContext
 public class TagTreeRepoTest {
+  private final Logger LOG = LoggerFactory.getLogger(TagTreeRepoTest.class);
+
   @Rule
   public ExpectedException exceptionRule = ExpectedException.none();
 
@@ -45,7 +49,7 @@ public class TagTreeRepoTest {
     tagTreeRepo.save(expected);
     assertThat(tagTreeRepo.count(), is(1L));
 
-    TagTree actual = tagTreeRepo.findByName(expected.getName()).get(0);
+    TagTree actual = tagTreeRepo.findByName(expected.getName());
     assertThat(actual.getId(), is(notNullValue()));
     assertThat(actual.getName(), is(expected.getName()));
   }
@@ -66,7 +70,7 @@ public class TagTreeRepoTest {
 
     assertThat(tagTreeRepo.count(), is(1L));
 
-    TagTree actual = tagTreeRepo.findByName(rootNode.getName()).get(0);
+    TagTree actual = tagTreeRepo.findByName(rootNode.getName());
     assertThat(actual.getTreeId(), is(100L));
     assertThat(actual.getLft(), is(MpttEntity.DEFAULT_LFT));
     assertThat(actual.getRgt(), is(MpttEntity.DEFAULT_RGT));
@@ -80,9 +84,9 @@ public class TagTreeRepoTest {
     tagTreeRepo.startTree(rootNode1, treeId1);
 
     exceptionRule.expect(MpttRepository.NodeAlreadyAttachedToTree.class);
-    exceptionRule.expectMessage(String.format("node already has treeId set to %d", treeId1));
+    exceptionRule.expectMessage(String.format("Node already has treeId set to %d", treeId1));
     Long treeId2 = 200L;
-    TagTree rootNode2 = tagTreeRepo.findByName(rootNode1.getName()).get(0);
+    TagTree rootNode2 = tagTreeRepo.findByName(rootNode1.getName());
     tagTreeRepo.startTree(rootNode2, treeId2);
   }
 
@@ -106,7 +110,7 @@ public class TagTreeRepoTest {
     TagTree child = new TagTree("child");
 
     exceptionRule.expect(MpttRepository.NodeNotInTree.class);
-    exceptionRule.expectMessage("Parent node not attached to any tree");
+    exceptionRule.expectMessage(String.format("Parent node not attached to any tree: %s", parent));
     tagTreeRepo.addChild(parent, child);
   }
 
@@ -121,7 +125,7 @@ public class TagTreeRepoTest {
     tagTreeRepo.startTree(child, 200L);
 
     exceptionRule.expect(MpttRepository.NodeAlreadyAttachedToTree.class);
-    exceptionRule.expectMessage(String.format("node already has treeId set to %d", 200L));
+    exceptionRule.expectMessage(String.format("Node already has treeId set to %d", 200L));
     tagTreeRepo.addChild(parent, child);
   }
 
@@ -147,14 +151,14 @@ public class TagTreeRepoTest {
 
     assertThat(tagTreeRepo.count(), is(2L));
 
-    TagTree actualRoot = tagTreeRepo.findByName("root").get(0);
-    TagTree actualChild = tagTreeRepo.findByName("child").get(0);
+    TagTree actualRoot = tagTreeRepo.findByName("root");
+    TagTree actualChild = tagTreeRepo.findByName("child");
 
     assertThat(actualRoot.getLft(), is(1L));
     assertThat(actualRoot.getRgt(), is(4L));
     assertThat(actualChild.getTreeId(), is(root.getTreeId()));
     assertThat(actualChild.getLft(), is(root.getLft() + 1));
-    assertThat(actualChild.getRgt(), is(actualChild.getLft() + 1));
+    assertThat(actualChild.getRgt(), is(root.getRgt() - 1));
   }
 
   @Test
@@ -448,13 +452,13 @@ public class TagTreeRepoTest {
     // @formatter:off
     String expected = String.format(
         ".\n" +
-            "└── root (id: %d) [treeId: 100 | lft: 1 | rgt: 14]\n" +
-            "    ├── child-1 (id: %d) [treeId: 100 | lft: 2 | rgt: 9]\n" +
-            "    │   ├── subChild-1 (id: %d) [treeId: 100 | lft: 3 | rgt: 6]\n" +
-            "    │   │   └── subSubChild (id: %d) [treeId: 100 | lft: 4 | rgt: 5]\n" +
-            "    │   └── subChild-2 (id: %d) [treeId: 100 | lft: 7 | rgt: 8]\n" +
-            "    └── child-2 (id: %d) [treeId: 100 | lft: 10 | rgt: 13]\n" +
-            "        └── lastSubChild (id: %d) [treeId: 100 | lft: 11 | rgt: 12]",
+        "└── root (id: %d) [treeId: 100 | lft: 1 | rgt: 14]\n" +
+        "    ├── child-1 (id: %d) [treeId: 100 | lft: 2 | rgt: 9]\n" +
+        "    │   ├── subChild-1 (id: %d) [treeId: 100 | lft: 3 | rgt: 6]\n" +
+        "    │   │   └── subSubChild (id: %d) [treeId: 100 | lft: 4 | rgt: 5]\n" +
+        "    │   └── subChild-2 (id: %d) [treeId: 100 | lft: 7 | rgt: 8]\n" +
+        "    └── child-2 (id: %d) [treeId: 100 | lft: 10 | rgt: 13]\n" +
+        "        └── lastSubChild (id: %d) [treeId: 100 | lft: 11 | rgt: 12]",
         root.getId(),
         child1.getId(),
         subChild1.getId(),
@@ -499,5 +503,263 @@ public class TagTreeRepoTest {
     List<TagTree> actual2 = tagTreeRepo.findChildren(child1);
     assertThat(actual2.size(), is(2));
     assertThat(actual2, containsInRelativeOrder(subChild1, subChild2));
+  }
+
+  @Test
+  public void givenParentNotAttachedToTree_whenRemoveChild_thenError()
+      throws MpttRepository.NodeNotInTree, MpttRepository.NodeNotChildOfParent {
+    TagTree parent = new TagTree("parent");
+    TagTree child = new TagTree("child");
+
+    exceptionRule.expect(MpttRepository.NodeNotInTree.class);
+    exceptionRule.expectMessage(String.format("Parent node not attached to any tree: %s", parent));
+    tagTreeRepo.removeChild(parent, child);
+  }
+
+  @Test
+  public void givenParentAndChildInDifferentTrees_whenRemoveChild_thenError()
+      throws MpttRepository.NodeAlreadyAttachedToTree, MpttRepository.TreeIdAlreadyUsed,
+      MpttRepository.NodeNotInTree, MpttRepository.NodeNotChildOfParent {
+    TagTree parent1 = new TagTree("parent-1");
+    tagTreeRepo.startTree(parent1, 100L);
+    TagTree child1 = new TagTree("child-1");
+    tagTreeRepo.addChild(parent1, child1);
+
+    TagTree parent2 = new TagTree("parent-2");
+    tagTreeRepo.startTree(parent2, 200L);
+    TagTree child2 = new TagTree("child-2");
+    tagTreeRepo.addChild(parent2, child2);
+
+    exceptionRule.expect(MpttRepository.NodeNotInTree.class);
+    exceptionRule
+        .expectMessage(String.format("Nodes not in same tree - parent: %s; child %s", parent1, child2));
+    tagTreeRepo.removeChild(parent1, child2);
+  }
+
+  @Test
+  public void givenParentAndChild_whenRemoveChildReverseParentAndChild_thenError()
+      throws MpttRepository.NodeAlreadyAttachedToTree, MpttRepository.TreeIdAlreadyUsed,
+      MpttRepository.NodeNotInTree, MpttRepository.NodeNotChildOfParent {
+    TagTree parent = new TagTree("parent");
+    tagTreeRepo.startTree(parent, 100L);
+
+    TagTree child = new TagTree("child");
+    tagTreeRepo.addChild(parent, child);
+
+    exceptionRule.expect(MpttRepository.NodeNotChildOfParent.class);
+    tagTreeRepo.removeChild(child, parent);
+  }
+
+  @Test
+  public void givenParentAndChild_whenRemoveChild_thenOK()
+      throws MpttRepository.NodeNotInTree, MpttRepository.NodeAlreadyAttachedToTree,
+      MpttRepository.TreeIdAlreadyUsed, MpttRepository.NodeNotChildOfParent {
+    TagTree parent = new TagTree("parent");
+    tagTreeRepo.startTree(parent, 100L);
+
+    TagTree child = new TagTree("child");
+    tagTreeRepo.addChild(parent, child);
+
+    LOG.debug(String.format("before:\n%s", tagTreeRepo.printTree(parent)));
+    List<TagTree> removed = tagTreeRepo.removeChild(parent, child);
+    LOG.debug(String.format("after\n%s", tagTreeRepo.printTree(parent)));
+
+    TagTree actual = tagTreeRepo.findByName("parent");
+    assertThat(actual.getLft(), is(1L));
+    assertThat(actual.getRgt(), is(2L));
+
+    assertThat(tagTreeRepo.findChildren(actual), is(emptyIterable()));
+
+    assertThat(tagTreeRepo.count(), is(1L));
+
+    assertThat(removed.size(), is(1));
+    assertThat(removed, contains(child));
+  }
+
+  @Test
+  public void givenParentChildAndSubChild_whenRemoveChild_thenOK()
+      throws MpttRepository.NodeNotInTree, MpttRepository.NodeAlreadyAttachedToTree,
+      MpttRepository.TreeIdAlreadyUsed, MpttRepository.NodeNotChildOfParent {
+    TagTree parent = new TagTree("parent");
+    tagTreeRepo.startTree(parent, 100L);
+
+    TagTree child = new TagTree("child");
+    tagTreeRepo.addChild(parent, child);
+
+    TagTree subChild = new TagTree("subChild");
+    tagTreeRepo.addChild(child, subChild);
+
+    LOG.debug(String.format("before:\n%s", tagTreeRepo.printTree(parent)));
+    List<TagTree> removed = tagTreeRepo.removeChild(parent, child);
+    LOG.debug(String.format("after:\n%s", tagTreeRepo.printTree(parent)));
+
+    TagTree actual = tagTreeRepo.findByName("parent");
+    assertThat(actual.getLft(), is(1L));
+    assertThat(actual.getRgt(), is(2L));
+
+    assertThat(tagTreeRepo.findChildren(actual), is(emptyIterable()));
+
+    assertThat(tagTreeRepo.count(), is(1L));
+
+    assertThat(removed.size(), is(2));
+    assertThat(removed, contains(child, subChild));
+  }
+
+  @Test
+  public void givenParentAndTwoChildren_whenRemoveChild_thenOK()
+      throws MpttRepository.NodeNotInTree, MpttRepository.NodeAlreadyAttachedToTree,
+      MpttRepository.TreeIdAlreadyUsed, MpttRepository.NodeNotChildOfParent {
+    TagTree parent = new TagTree("parent");
+    tagTreeRepo.startTree(parent, 100L);
+
+    TagTree child1 = new TagTree("child-1");
+    tagTreeRepo.addChild(parent, child1);
+
+    TagTree child2 = new TagTree("child-2");
+    tagTreeRepo.addChild(parent, child2);
+
+    LOG.debug(String.format("before:\n%s", tagTreeRepo.printTree(parent)));
+    List<TagTree> removed = tagTreeRepo.removeChild(parent, child1);
+    LOG.debug(String.format("after:\n%s", tagTreeRepo.printTree(parent)));
+
+    TagTree actual = tagTreeRepo.findByName("parent");
+    assertThat(actual.getLft(), is(1L));
+    assertThat(actual.getRgt(), is(4L));
+    assertThat(child2.getLft(), is(2L));
+    assertThat(child2.getRgt(), is(3L));
+
+    List<TagTree> actualChildren = tagTreeRepo.findChildren(parent);
+    assertThat(actualChildren.size(), is(1));
+    assertThat(actualChildren, contains(child2));
+
+    assertThat(tagTreeRepo.count(), is(2L));
+
+    assertThat(removed.size(), is(1));
+    assertThat(removed, contains(child1));
+  }
+
+  @Test
+  public void givenParentChildAndSubChild_whenRemoveSubChild_thenOK()
+      throws MpttRepository.NodeNotInTree, MpttRepository.NodeAlreadyAttachedToTree,
+      MpttRepository.TreeIdAlreadyUsed, MpttRepository.NodeNotChildOfParent {
+    TagTree parent = new TagTree("parent");
+    tagTreeRepo.startTree(parent, 100L);
+
+    TagTree child = new TagTree("child");
+    tagTreeRepo.addChild(parent, child);
+
+    TagTree subChild = new TagTree("subChild");
+    tagTreeRepo.addChild(child, subChild);
+
+    LOG.debug(String.format("before:\n%s", tagTreeRepo.printTree(parent)));
+    List<TagTree> removed = tagTreeRepo.removeChild(parent, subChild);
+    LOG.debug(String.format("after:\n%s", tagTreeRepo.printTree(parent)));
+
+    TagTree actual = tagTreeRepo.findByName("parent");
+    assertThat(actual.getLft(), is(1L));
+    assertThat(actual.getRgt(), is(4L));
+    assertThat(child.getLft(), is(2L));
+    assertThat(child.getRgt(), is(3L));
+
+    List<TagTree> actualChildren = tagTreeRepo.findChildren(parent);
+    assertThat(actualChildren.size(), is(1));
+    assertThat(actualChildren, contains(child));
+
+    assertThat(tagTreeRepo.count(), is(2L));
+
+    assertThat(removed.size(), is(1));
+    assertThat(removed, contains(subChild));
+
+    assertThat(tagTreeRepo.findChildren(child), is(empty()));
+  }
+
+  @Test
+  public void givenComplexTree3_whenRemoveChild1_thenOK()
+      throws MpttRepository.NodeAlreadyAttachedToTree, MpttRepository.TreeIdAlreadyUsed,
+      MpttRepository.NodeNotInTree, MpttRepository.NodeNotChildOfParent {
+    TagTree root = new TagTree("root");
+    tagTreeRepo.startTree(root, 100L);
+
+    TagTree child1 = new TagTree("child-1");
+    tagTreeRepo.addChild(root, child1);
+
+    TagTree subChild1 = new TagTree("subChild-1");
+    tagTreeRepo.addChild(child1, subChild1);
+
+    TagTree subSubChild = new TagTree("subSubChild");
+    tagTreeRepo.addChild(subChild1, subSubChild);
+
+    TagTree subChild2 = new TagTree("subChild-2");
+    tagTreeRepo.addChild(child1, subChild2);
+
+    TagTree child2 = new TagTree("child-2");
+    tagTreeRepo.addChild(root, child2);
+
+    TagTree lastSubChild = new TagTree("lastSubChild");
+    tagTreeRepo.addChild(child2, lastSubChild);
+
+    LOG.debug(String.format("before:\n%s", tagTreeRepo.printTree(root)));
+    tagTreeRepo.removeChild(root, child1);
+    LOG.debug(String.format("after:\n%s", tagTreeRepo.printTree(root)));
+
+    // @formatter:off
+    String expected = String.format(
+        ".\n" +
+        "└── root (id: %d) [treeId: 100 | lft: 1 | rgt: 6]\n" +
+        "    └── child-2 (id: %d) [treeId: 100 | lft: 2 | rgt: 5]\n" +
+        "        └── lastSubChild (id: %d) [treeId: 100 | lft: 3 | rgt: 4]",
+        root.getId(),
+        child2.getId(),
+        lastSubChild.getId());
+    // @formatter:on
+    String actual = tagTreeRepo.printTree(root);
+    assertThat(actual, is(expected));
+  }
+
+  @Test
+  public void givenComplexTree3_whenRemoveChild2_thenOK()
+      throws MpttRepository.NodeAlreadyAttachedToTree, MpttRepository.TreeIdAlreadyUsed,
+      MpttRepository.NodeNotInTree, MpttRepository.NodeNotChildOfParent {
+    TagTree root = new TagTree("root");
+    tagTreeRepo.startTree(root, 100L);
+
+    TagTree child1 = new TagTree("child-1");
+    tagTreeRepo.addChild(root, child1);
+
+    TagTree subChild1 = new TagTree("subChild-1");
+    tagTreeRepo.addChild(child1, subChild1);
+
+    TagTree subSubChild = new TagTree("subSubChild");
+    tagTreeRepo.addChild(subChild1, subSubChild);
+
+    TagTree subChild2 = new TagTree("subChild-2");
+    tagTreeRepo.addChild(child1, subChild2);
+
+    TagTree child2 = new TagTree("child-2");
+    tagTreeRepo.addChild(root, child2);
+
+    TagTree lastSubChild = new TagTree("lastSubChild");
+    tagTreeRepo.addChild(child2, lastSubChild);
+
+    LOG.debug(String.format("before:\n%s", tagTreeRepo.printTree(root)));
+    tagTreeRepo.removeChild(root, child2);
+    LOG.debug(String.format("after:\n%s", tagTreeRepo.printTree(root)));
+
+    // @formatter:off
+    String expected = String.format(
+        ".\n" +
+        "└── root (id: %d) [treeId: 100 | lft: 1 | rgt: 10]\n" +
+        "    └── child-1 (id: %d) [treeId: 100 | lft: 2 | rgt: 9]\n" +
+        "        ├── subChild-1 (id: %d) [treeId: 100 | lft: 3 | rgt: 6]\n" +
+        "        │   └── subSubChild (id: %d) [treeId: 100 | lft: 4 | rgt: 5]\n" +
+        "        └── subChild-2 (id: %d) [treeId: 100 | lft: 7 | rgt: 8]",
+        root.getId(),
+        child1.getId(),
+        subChild1.getId(),
+        subSubChild.getId(),
+        subChild2.getId());
+    // @formatter:on
+    String actual = tagTreeRepo.printTree(root);
+    assertThat(actual, is(expected));
   }
 }

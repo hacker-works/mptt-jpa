@@ -12,13 +12,19 @@ public interface MpttRepository<T extends MpttEntity, ID> {
 
   void addChild(T parent, T child) throws NodeNotInTree, NodeAlreadyAttachedToTree;
 
+  List<T> removeChild(T parent, T child) throws NodeNotInTree, NodeNotChildOfParent;
+
   T findRightMostChild(T node);
 
   List<T> findByTreeIdAndLftGreaterThanEqual(Long treeId, Long lft);
+
   List<T> findByTreeIdAndLftGreaterThan(Long treeId, Long lft);
+
   List<T> findByTreeIdAndRgtGreaterThan(Long treeId, Long rgt);
 
   List<T> findChildren(T node);
+
+  List<T> findSubTree(T node);
 
   String printTree(T node);
 
@@ -36,6 +42,12 @@ public interface MpttRepository<T extends MpttEntity, ID> {
 
   class NodeNotInTree extends Exception {
     public NodeNotInTree(String message) {
+      super(message);
+    }
+  }
+
+  class NodeNotChildOfParent extends Exception {
+    public NodeNotChildOfParent(String message) {
       super(message);
     }
   }
