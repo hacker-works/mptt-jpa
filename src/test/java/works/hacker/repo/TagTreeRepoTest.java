@@ -299,7 +299,7 @@ public class TagTreeRepoTest {
   }
 
   @Test
-  public void givenMoreComplexTree_whenPrintTree_thenOK()
+  public void givenComplexTree1_whenPrintTree_thenOK()
       throws MpttRepository.NodeAlreadyAttachedToTree, MpttRepository.TreeIdAlreadyUsed,
       MpttRepository.NodeNotInTree {
     TagTree root = new TagTree("root");
@@ -325,6 +325,90 @@ public class TagTreeRepoTest {
         child1.getId(),
         subChild.getId(),
         child2.getId());
+    // @formatter:on
+    String actual = tagTreeRepo.printTree(root);
+    assertThat(actual, is(expected));
+  }
+
+  @Test
+  public void givenComplexTree2_whenPrintTree_thenOK()
+      throws MpttRepository.NodeAlreadyAttachedToTree, MpttRepository.TreeIdAlreadyUsed,
+      MpttRepository.NodeNotInTree {
+    TagTree root = new TagTree("root");
+    tagTreeRepo.startTree(root, 100L);
+
+    TagTree child1 = new TagTree("child-1");
+    tagTreeRepo.addChild(root, child1);
+
+    TagTree subChild = new TagTree("subChild");
+    tagTreeRepo.addChild(child1, subChild);
+
+    TagTree subSubChild = new TagTree("subSubChild");
+    tagTreeRepo.addChild(subChild, subSubChild);
+
+    TagTree child2 = new TagTree("child-2");
+    tagTreeRepo.addChild(root, child2);
+
+    // @formatter:off
+    String expected = String.format(
+        ".\n" +
+        "└── root (id: %d) [treeId: 100 | lft: 1 | rgt: 10]\n" +
+        "    ├── child-1 (id: %d) [treeId: 100 | lft: 2 | rgt: 7]\n" +
+        "    │   └── subChild (id: %d) [treeId: 100 | lft: 3 | rgt: 6]\n" +
+        "    │       └── subSubChild (id: %d) [treeId: 100 | lft: 4 | rgt: 5]\n" +
+        "    └── child-2 (id: %d) [treeId: 100 | lft: 8 | rgt: 9]",
+        root.getId(),
+        child1.getId(),
+        subChild.getId(),
+        subSubChild.getId(),
+        child2.getId());
+    // @formatter:on
+    String actual = tagTreeRepo.printTree(root);
+    assertThat(actual, is(expected));
+  }
+
+  @Test
+  public void givenComplexTree3_whenPrintTree_thenOK()
+      throws MpttRepository.NodeAlreadyAttachedToTree, MpttRepository.TreeIdAlreadyUsed,
+      MpttRepository.NodeNotInTree {
+    TagTree root = new TagTree("root");
+    tagTreeRepo.startTree(root, 100L);
+
+    TagTree child1 = new TagTree("child-1");
+    tagTreeRepo.addChild(root, child1);
+
+    TagTree subChild1 = new TagTree("subChild-1");
+    tagTreeRepo.addChild(child1, subChild1);
+
+    TagTree subSubChild = new TagTree("subSubChild");
+    tagTreeRepo.addChild(subChild1, subSubChild);
+
+    TagTree subChild2 = new TagTree("subChild-2");
+    tagTreeRepo.addChild(child1, subChild2);
+
+    TagTree child2 = new TagTree("child-2");
+    tagTreeRepo.addChild(root, child2);
+
+    TagTree lastSubChild = new TagTree("lastSubChild");
+    tagTreeRepo.addChild(child2, lastSubChild);
+
+    // @formatter:off
+    String expected = String.format(
+        ".\n" +
+            "└── root (id: %d) [treeId: 100 | lft: 1 | rgt: 14]\n" +
+            "    ├── child-1 (id: %d) [treeId: 100 | lft: 2 | rgt: 9]\n" +
+            "    │   ├── subChild-1 (id: %d) [treeId: 100 | lft: 3 | rgt: 6]\n" +
+            "    │   │   └── subSubChild (id: %d) [treeId: 100 | lft: 4 | rgt: 5]\n" +
+            "    │   └── subChild-2 (id: %d) [treeId: 100 | lft: 7 | rgt: 8]\n" +
+            "    └── child-2 (id: %d) [treeId: 100 | lft: 10 | rgt: 13]\n" +
+            "        └── lastSubChild (id: %d) [treeId: 100 | lft: 11 | rgt: 12]",
+        root.getId(),
+        child1.getId(),
+        subChild1.getId(),
+        subSubChild.getId(),
+        subChild2.getId(),
+        child2.getId(),
+        lastSubChild.getId());
     // @formatter:on
     String actual = tagTreeRepo.printTree(root);
     assertThat(actual, is(expected));

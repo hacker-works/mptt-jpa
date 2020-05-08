@@ -5,9 +5,11 @@ import javax.persistence.NoResultException;
 import javax.persistence.PersistenceContext;
 import javax.persistence.TypedQuery;
 import javax.transaction.Transactional;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 @Transactional
 public abstract class MpttRepositoryImpl<T extends MpttEntity, ID> implements MpttRepository<T, ID> {
@@ -74,16 +76,16 @@ public abstract class MpttRepositoryImpl<T extends MpttEntity, ID> implements Mp
       childLft = parent.getLft() + 1;
 
       findByTreeIdAndLftGreaterThanEqual(parent.getTreeId(), childLft)
-          .stream().forEach(n -> n.setLft(n.getLft() + 2L));
+          .forEach(n -> n.setLft(n.getLft() + 2L));
       findByTreeIdAndRgtGreaterThan(parent.getTreeId(), parent.getLft())
-          .stream().forEach(n -> n.setRgt(n.getRgt() + 2L));
+          .forEach(n -> n.setRgt(n.getRgt() + 2L));
     } else {
       childLft = rightMostChild.getRgt() + 1;
 
       findByTreeIdAndLftGreaterThan(parent.getTreeId(), rightMostChild.getRgt())
-          .stream().forEach(n -> n.setLft(n.getLft() + 2L));
+          .forEach(n -> n.setLft(n.getLft() + 2L));
       findByTreeIdAndRgtGreaterThan(parent.getTreeId(), rightMostChild.getRgt())
-          .stream().forEach(n -> n.setRgt(n.getRgt() + 2L));
+          .forEach(n -> n.setRgt(n.getRgt() + 2L));
     }
     childRgt = childLft + 1;
 
@@ -193,27 +195,34 @@ public abstract class MpttRepositoryImpl<T extends MpttEntity, ID> implements Mp
     String rootString = printRootNode(node);
 
     List<T> children = findChildren(node);
+    List<Integer> levels = Arrays.asList(0);
     String childrenString = children.isEmpty() ? "" :
         "\n" +
             IntStream.range(0, children.size())
                 .mapToObj(i -> i < children.size() - 1 ?
-                    printSubTree(children.get(i), 1, false) :
-                    printSubTree(children.get(i), 1, true))
+                    printSubTree(children.get(i), levels, false) :
+                    printSubTree(children.get(i), levels, true))
                 .collect(Collectors.joining("\n"));
 
     return rootString + childrenString;
   }
 
-  private String printSubTree(T node, int level, boolean isLast) {
+  private String printSubTree(T node, List<Integer> levels, boolean isLast) {
     List<T> children = findChildren(node);
+    List<Integer> nextLevels  = concatLevel(levels, isLast ? 0 : 1);
     return
-        (isLast ? printLastChildNode(node, level) : printChildNode(node, level)) +
+        (isLast ? printLastChildNode(node, levels) : printChildNode(node, levels)) +
             (children.isEmpty() ? "" : "\n" +
                 IntStream.range(0, children.size())
                     .mapToObj(i -> i < children.size() - 1 ?
-                        printSubTree(children.get(i), level + 1, false) :
-                        printSubTree(children.get(i), level + 1, true))
+                        printSubTree(children.get(i), nextLevels, false) :
+                        printSubTree(children.get(i), nextLevels, true))
                     .collect(Collectors.joining("\n")));
+  }
+
+  private List<Integer> concatLevel(List<Integer> levels, Integer level) {
+    return Stream.concat(levels.stream(), Stream.of(level))
+        .collect(Collectors.toList());
   }
 
   private String printRootNode(T node) {
@@ -225,15 +234,21 @@ public abstract class MpttRepositoryImpl<T extends MpttEntity, ID> implements Mp
         node.toString());
   }
 
-  private String printChildNode(T node, int level) {
+  private String printChildNode(T node, List<Integer> levels) {
     return String.format("%s├── %s",
-        "    " + "│   ".repeat(level - 1),
+        printLevelPrefix(levels),
         node.toString());
   }
 
-  private String printLastChildNode(T node, int level) {
+  private String printLastChildNode(T node, List<Integer> levels) {
     return String.format("%s└── %s",
-        "    " + "│   ".repeat(level - 1),
+        printLevelPrefix(levels),
         node.toString());
+  }
+
+  private String printLevelPrefix(List<Integer> levels) {
+    return levels.stream()
+        .map(i -> i == 0 ? "    " : "│   ")
+        .collect(Collectors.joining());
   }
 }
