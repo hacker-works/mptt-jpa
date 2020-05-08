@@ -5,7 +5,7 @@ import javax.persistence.NoResultException;
 import javax.persistence.PersistenceContext;
 import javax.persistence.TypedQuery;
 import javax.transaction.Transactional;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -53,7 +53,7 @@ public abstract class MpttRepositoryImpl<T extends MpttEntity, ID> implements Mp
 
   @Override
   public MpttEntity findTreeRoot(Long treeId) throws NoResultException {
-    String query = String.format(
+    var query = String.format(
         "SELECT node FROM %s node" +
             " WHERE node.treeId = :treeId AND node.lft = 1",
         entityClass.getSimpleName());
@@ -70,7 +70,7 @@ public abstract class MpttRepositoryImpl<T extends MpttEntity, ID> implements Mp
     long childLft;
     long childRgt;
 
-    T rightMostChild = findRightMostChild(parent);
+    var rightMostChild = findRightMostChild(parent);
 
     if (rightMostChild == null) {
       childLft = parent.getLft() + 1;
@@ -105,7 +105,7 @@ public abstract class MpttRepositoryImpl<T extends MpttEntity, ID> implements Mp
 
   @Override
   public T findRightMostChild(T node) {
-    String query = String.format(
+    var query = String.format(
         "SELECT node FROM %s node" +
             " WHERE node.treeId = :treeId AND node.rgt = :rgt",
         entityClass.getSimpleName());
@@ -125,7 +125,7 @@ public abstract class MpttRepositoryImpl<T extends MpttEntity, ID> implements Mp
 
   @Override
   public List<T> findByTreeIdAndLftGreaterThanEqual(Long treeId, Long lft) {
-    String query = String.format(
+    var query = String.format(
         "SELECT node" +
             " FROM %s node" +
             " WHERE node.treeId = :treeId" +
@@ -139,7 +139,7 @@ public abstract class MpttRepositoryImpl<T extends MpttEntity, ID> implements Mp
 
   @Override
   public List<T> findByTreeIdAndLftGreaterThan(Long treeId, Long lft) {
-    String query = String.format(
+    var query = String.format(
         "SELECT node" +
             " FROM %s node" +
             " WHERE node.treeId = :treeId" +
@@ -153,7 +153,7 @@ public abstract class MpttRepositoryImpl<T extends MpttEntity, ID> implements Mp
 
   @Override
   public List<T> findByTreeIdAndRgtGreaterThan(Long treeId, Long rgt) {
-    String query = String.format(
+    var query = String.format(
         "SELECT node" +
             " FROM %s node" +
             " WHERE node.treeId = :treeId" +
@@ -167,13 +167,13 @@ public abstract class MpttRepositoryImpl<T extends MpttEntity, ID> implements Mp
 
   @Override
   public List<T> findChildren(T node) {
-    String query = String.format(
+    var query = String.format(
         "SELECT child" +
             " FROM %s child" +
             " WHERE child.treeId = :treeId" +
             " AND child.lft > :lft AND child.rgt < :rgt",
         entityClass.getSimpleName());
-    List<T> allChildren = entityManager.createQuery(query, entityClass)
+    var allChildren = entityManager.createQuery(query, entityClass)
         .setParameter("treeId", node.getTreeId())
         .setParameter("lft", node.getLft())
         .setParameter("rgt", node.getRgt())
@@ -192,11 +192,11 @@ public abstract class MpttRepositoryImpl<T extends MpttEntity, ID> implements Mp
 
   @Override
   public String printTree(T node) {
-    String rootString = printRootNode(node);
+    var rootString = printRootNode(node);
 
-    List<T> children = findChildren(node);
-    List<Integer> levels = Arrays.asList(0);
-    String childrenString = children.isEmpty() ? "" :
+    var children = findChildren(node);
+    var levels = Collections.unmodifiableList(Collections.singletonList(0));
+    var childrenString = children.isEmpty() ? "" :
         "\n" +
             IntStream.range(0, children.size())
                 .mapToObj(i -> i < children.size() - 1 ?
@@ -208,8 +208,8 @@ public abstract class MpttRepositoryImpl<T extends MpttEntity, ID> implements Mp
   }
 
   private String printSubTree(T node, List<Integer> levels, boolean isLast) {
-    List<T> children = findChildren(node);
-    List<Integer> nextLevels  = concatLevel(levels, isLast ? 0 : 1);
+    var children = findChildren(node);
+    var nextLevels = concatLevel(levels, isLast ? 0 : 1);
     return
         (isLast ? printLastChildNode(node, levels) : printChildNode(node, levels)) +
             (children.isEmpty() ? "" : "\n" +

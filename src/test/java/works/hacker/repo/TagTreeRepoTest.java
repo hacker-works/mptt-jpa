@@ -331,6 +331,27 @@ public class TagTreeRepoTest {
   }
 
   @Test
+  public void givenComplexTree1_whenfindChildren_thenContainsTwoChildren()
+      throws MpttRepository.NodeAlreadyAttachedToTree, MpttRepository.TreeIdAlreadyUsed,
+      MpttRepository.NodeNotInTree {
+    TagTree root = new TagTree("root");
+    tagTreeRepo.startTree(root, 100L);
+
+    TagTree child1 = new TagTree("child-1");
+    tagTreeRepo.addChild(root, child1);
+
+    TagTree subChild = new TagTree("subChild");
+    tagTreeRepo.addChild(child1, subChild);
+
+    TagTree child2 = new TagTree("child-2");
+    tagTreeRepo.addChild(root, child2);
+
+    List<TagTree> actual = tagTreeRepo.findChildren(root);
+    assertThat(actual.size(), is(2));
+    assertThat(actual, containsInRelativeOrder(child1, child2));
+  }
+
+  @Test
   public void givenComplexTree2_whenPrintTree_thenOK()
       throws MpttRepository.NodeAlreadyAttachedToTree, MpttRepository.TreeIdAlreadyUsed,
       MpttRepository.NodeNotInTree {
@@ -365,6 +386,38 @@ public class TagTreeRepoTest {
     // @formatter:on
     String actual = tagTreeRepo.printTree(root);
     assertThat(actual, is(expected));
+  }
+
+  @Test
+  public void givenComplexTree2_whenFindChildren_thenOK()
+      throws MpttRepository.NodeAlreadyAttachedToTree, MpttRepository.TreeIdAlreadyUsed,
+      MpttRepository.NodeNotInTree {
+    TagTree root = new TagTree("root");
+    tagTreeRepo.startTree(root, 100L);
+
+    TagTree child1 = new TagTree("child-1");
+    tagTreeRepo.addChild(root, child1);
+
+    TagTree subChild = new TagTree("subChild");
+    tagTreeRepo.addChild(child1, subChild);
+
+    TagTree subSubChild = new TagTree("subSubChild");
+    tagTreeRepo.addChild(subChild, subSubChild);
+
+    TagTree child2 = new TagTree("child-2");
+    tagTreeRepo.addChild(root, child2);
+
+    List<TagTree> actual1 = tagTreeRepo.findChildren(root);
+    assertThat(actual1.size(), is(2));
+    assertThat(actual1, containsInRelativeOrder(child1, child2));
+
+    List<TagTree> actual2 = tagTreeRepo.findChildren(child1);
+    assertThat(actual2.size(), is(1));
+    assertThat(actual2, contains(subChild));
+
+    List<TagTree> actual3 = tagTreeRepo.findChildren(subChild);
+    assertThat(actual3.size(), is(1));
+    assertThat(actual3, contains(subSubChild));
   }
 
   @Test
@@ -412,5 +465,39 @@ public class TagTreeRepoTest {
     // @formatter:on
     String actual = tagTreeRepo.printTree(root);
     assertThat(actual, is(expected));
+  }
+
+  @Test
+  public void givenComplexTree3_whenFindChildren_thenOK()
+      throws MpttRepository.NodeAlreadyAttachedToTree, MpttRepository.TreeIdAlreadyUsed,
+      MpttRepository.NodeNotInTree {
+    TagTree root = new TagTree("root");
+    tagTreeRepo.startTree(root, 100L);
+
+    TagTree child1 = new TagTree("child-1");
+    tagTreeRepo.addChild(root, child1);
+
+    TagTree subChild1 = new TagTree("subChild-1");
+    tagTreeRepo.addChild(child1, subChild1);
+
+    TagTree subSubChild = new TagTree("subSubChild");
+    tagTreeRepo.addChild(subChild1, subSubChild);
+
+    TagTree subChild2 = new TagTree("subChild-2");
+    tagTreeRepo.addChild(child1, subChild2);
+
+    TagTree child2 = new TagTree("child-2");
+    tagTreeRepo.addChild(root, child2);
+
+    TagTree lastSubChild = new TagTree("lastSubChild");
+    tagTreeRepo.addChild(child2, lastSubChild);
+
+    List<TagTree> actual1 = tagTreeRepo.findChildren(root);
+    assertThat(actual1.size(), is(2));
+    assertThat(actual1, containsInRelativeOrder(child1, child2));
+
+    List<TagTree> actual2 = tagTreeRepo.findChildren(child1);
+    assertThat(actual2.size(), is(2));
+    assertThat(actual2, containsInRelativeOrder(subChild1, subChild2));
   }
 }
