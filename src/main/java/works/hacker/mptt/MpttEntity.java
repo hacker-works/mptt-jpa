@@ -15,6 +15,10 @@ import javax.persistence.MappedSuperclass;
  * <li><b>treeId</b> to allow growing multiple trees / hierarchies and discriminate between trees</li>
  * </ul>
  * <p>
+ * <b>NOTE:</b> left and right are reserved words in MySQL, thus the use of <b>lft</b> and <b>rgt</b>.
+ * <p>
+ * These properties are managed by the implementation of the {@link MpttRepository}.
+ * <p>
  * Usage:
  * <pre>{@code
  * @Entity
@@ -36,6 +40,7 @@ import javax.persistence.MappedSuperclass;
  *     return Objects.hash(this.toString());
  *   }
  *
+ *   @SuppressWarnings("EqualsWhichDoesntCheckParameterClass")
  *   @Override
  *   public boolean equals(Object o) {
  *     return this.toString().equals(o.toString());

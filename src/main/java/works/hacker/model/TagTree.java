@@ -5,6 +5,16 @@ import works.hacker.mptt.MpttEntity;
 import javax.persistence.*;
 import java.util.Objects;
 
+/** Demo usage of the {@link works.hacker.mptt.MpttEntity}.
+ * <p>
+ * Also used in the unit / integrations tests, as the {@link works.hacker.mptt.MpttEntity} is annotated
+ * with {@link javax.persistence.MappedSuperclass} and can not be used standalone.
+ *
+ * @see works.hacker.repo.TagTreeRepositoryCustom
+ * @see works.hacker.repo.TagTreeRepositoryImpl
+ * @see works.hacker.repo.TagTreeRepository
+ * @see <a href="https://github.com/hacker-works/mptt-jpa">README</a>
+ */
 @Entity
 public class TagTree extends MpttEntity {
   @Id
@@ -12,7 +22,7 @@ public class TagTree extends MpttEntity {
   private long id;
 
   @Column(nullable = false)
-  private String name;
+  private final String name;
 
   public TagTree(String name) {
     super();
@@ -37,6 +47,7 @@ public class TagTree extends MpttEntity {
     return Objects.hash(this.toString());
   }
 
+  @SuppressWarnings("EqualsWhichDoesntCheckParameterClass")
   @Override
   public boolean equals(Object o) {
     return this.toString().equals(o.toString());
