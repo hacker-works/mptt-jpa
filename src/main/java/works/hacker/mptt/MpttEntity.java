@@ -3,14 +3,59 @@ package works.hacker.mptt;
 import javax.persistence.Column;
 import javax.persistence.MappedSuperclass;
 
+/**
+ * Provides the properties needed to maintain the MPTT (Modified Preorder Tree Traversal) data structure.
+ * <p>
+ * In essence MPTT allows fast read operations on hierarchical tree-like data structures stored in an SQL
+ * database.
+ * <p>
+ * Modelling such data structure of nested sets in SQL is done by using the following properties:
+ * <ul>
+ * <li><b>lft</b> and <b>rgt</b> to represent the nesting of the nodes</li>
+ * <li><b>treeId</b> to allow growing multiple trees / hierarchies and discriminate between trees</li>
+ * </ul>
+ * <p>
+ * Usage:
+ * <pre>{@code
+ * @Entity
+ * public class TagTree extends MpttEntity {
+ * ...
+ *   public TagTree(String name) {
+ *     super(); // important to call super to set the MpttEntity-instance defaults
+ *     this.name = name;
+ *   }
+ *
+ *   // The unit tests make good use of these overrides:
+ *   @Override
+ *   public String toString() {
+ *     return String.format("%s (id: %d) %s", getName(),  getId(), super.toString());
+ *   }
+ *
+ *   @Override
+ *   public int hashCode() {
+ *     return Objects.hash(this.toString());
+ *   }
+ *
+ *   @Override
+ *   public boolean equals(Object o) {
+ *     return this.toString().equals(o.toString());
+ *   }
+ * }
+ * }</pre>
+ *
+ * @see works.hacker.model.TagTree demo sample extending MpttEntity
+ * @see MpttRepository
+ * @see MpttRepositoryImpl
+ * @see <a href="https://github.com/hacker-works/mptt-jpa">README</a>
+ */
 @MappedSuperclass
 public class MpttEntity {
-  public static final Long NO_TREE_ID = 0L;
-  public static final Long DEFAULT_LFT = 1L;
-  public static final Long DEFAULT_RGT = 2L;
+  public static final long NO_TREE_ID = 0L;
+  public static final long DEFAULT_LFT = 1L;
+  public static final long DEFAULT_RGT = 2L;
 
   @Column(nullable = false)
-  private Long treeId;
+  private long treeId;
 
   @Column(nullable = false)
   private long lft;
@@ -25,7 +70,7 @@ public class MpttEntity {
   }
 
   public boolean hasTreeId() {
-    return treeId != null && !treeId.equals(NO_TREE_ID);
+    return treeId != NO_TREE_ID;
   }
 
   public Long getTreeId() {

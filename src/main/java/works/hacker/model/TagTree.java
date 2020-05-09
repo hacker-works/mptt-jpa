@@ -33,12 +33,12 @@ public class TagTree extends MpttEntity {
   }
 
   @Override
-  public boolean equals(Object o) {
-    return this.toString().equals(o.toString());
+  public int hashCode() {
+    return Objects.hash(this.toString());
   }
 
   @Override
-  public int hashCode() {
-    return Objects.hash(this.toString());
+  public boolean equals(Object o) {
+    return this.toString().equals(o.toString());
   }
 }
