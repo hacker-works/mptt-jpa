@@ -3,7 +3,7 @@ package works.hacker.mptt;
 import javax.persistence.NoResultException;
 import java.util.List;
 
-public interface MpttRepository<T extends MpttEntity, ID> {
+public interface MpttRepository<T extends MpttEntity> {
   void setEntityClass(Class<T> entityClass);
 
   void startTree(T node, Long treeId) throws NodeAlreadyAttachedToTree, TreeIdAlreadyUsed;

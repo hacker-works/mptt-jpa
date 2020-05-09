@@ -12,7 +12,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 @Transactional
-public abstract class MpttRepositoryImpl<T extends MpttEntity, ID> implements MpttRepository<T, ID> {
+public abstract class MpttRepositoryImpl<T extends MpttEntity> implements MpttRepository<T> {
   @PersistenceContext
   EntityManager entityManager;
 

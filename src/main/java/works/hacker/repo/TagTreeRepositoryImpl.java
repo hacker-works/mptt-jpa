@@ -5,6 +5,6 @@ import works.hacker.model.TagTree;
 import works.hacker.mptt.MpttRepositoryImpl;
 
 @Repository
-public class TagTreeRepositoryImpl extends MpttRepositoryImpl<TagTree, Long> implements
+public class TagTreeRepositoryImpl extends MpttRepositoryImpl<TagTree> implements
     TagTreeRepositoryCustom {
 }
