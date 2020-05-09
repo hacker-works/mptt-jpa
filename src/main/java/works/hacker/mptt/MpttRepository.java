@@ -26,6 +26,8 @@ public interface MpttRepository<T extends MpttEntity, ID> {
 
   List<T> findSubTree(T node);
 
+  List<T> findAncestors(T node);
+
   String printTree(T node);
 
   class TreeIdAlreadyUsed extends Exception {

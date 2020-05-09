@@ -242,6 +242,22 @@ public abstract class MpttRepositoryImpl<T extends MpttEntity, ID> implements Mp
   }
 
   @Override
+  public List<T> findAncestors(T node) {
+    var query = String.format(
+        "SELECT node" +
+            " FROM %s node" +
+            " WHERE node.treeId = :treeId" +
+            " AND node.lft < :lft AND :rgt < node.rgt" +
+            " ORDER BY node.lft ASC",
+        entityClass.getSimpleName());
+    return entityManager.createQuery(query, entityClass)
+        .setParameter("treeId", node.getTreeId())
+        .setParameter("lft", node.getLft())
+        .setParameter("rgt", node.getRgt())
+        .getResultList();
+  }
+
+  @Override
   public String printTree(T node) {
     var rootString = printRootNode(node);
 

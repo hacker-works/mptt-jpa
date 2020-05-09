@@ -805,4 +805,93 @@ public class TagTreeRepoTest {
     var actual = tagTreeRepo.findTreeRoot(100L);
     assertThat(actual, is(root));
   }
+
+  @Test
+  public void givenRoot_whenFindAncestorsOfRoot_thenEmptyList()
+      throws MpttRepository.NodeAlreadyAttachedToTree, MpttRepository.TreeIdAlreadyUsed {
+    TagTree root = new TagTree("root");
+    tagTreeRepo.startTree(root, 100L);
+
+    List<TagTree> actual = tagTreeRepo.findAncestors(root);
+    assertThat(actual, is(empty()));
+  }
+
+  @Test
+  public void givenRootAndChild_whenFindAncestorsOfChild_thenListOfRoot()
+      throws MpttRepository.NodeAlreadyAttachedToTree, MpttRepository.TreeIdAlreadyUsed,
+      MpttRepository.NodeNotInTree {
+    TagTree root = new TagTree("root");
+    tagTreeRepo.startTree(root, 100L);
+
+    TagTree child = new TagTree("child");
+    tagTreeRepo.addChild(root, child);
+
+    List<TagTree> actual = tagTreeRepo.findAncestors(child);
+    assertThat(actual.size(), is(1));
+    assertThat(actual, contains(root));
+  }
+
+  @Test
+  public void givenRootChildAndSubChild_whenFindAncestors_thenOK()
+      throws MpttRepository.NodeAlreadyAttachedToTree, MpttRepository.TreeIdAlreadyUsed,
+      MpttRepository.NodeNotInTree {
+    TagTree root = new TagTree("root");
+    tagTreeRepo.startTree(root, 100L);
+
+    TagTree child = new TagTree("child");
+    tagTreeRepo.addChild(root, child);
+
+    TagTree subChild = new TagTree("subChild");
+    tagTreeRepo.addChild(child, subChild);
+
+    List<TagTree> ancestorsOfRoot = tagTreeRepo.findAncestors(root);
+    assertThat(ancestorsOfRoot, is(empty()));
+
+    List<TagTree> ancestorsOfChild = tagTreeRepo.findAncestors(child);
+    assertThat(ancestorsOfChild.size(), is(1));
+    assertThat(ancestorsOfChild, contains(root));
+
+    List<TagTree> ancestorsOfSubChild = tagTreeRepo.findAncestors(subChild);
+    assertThat(ancestorsOfSubChild.size(), is(2));
+    assertThat(ancestorsOfSubChild, containsInRelativeOrder(root, child));
+  }
+
+  @Test
+  public void givenComplexTree3_whenFindAncestors_thenOK()
+      throws MpttRepository.NodeAlreadyAttachedToTree, MpttRepository.TreeIdAlreadyUsed,
+      MpttRepository.NodeNotInTree {
+    TagTree root = new TagTree("root");
+    tagTreeRepo.startTree(root, 100L);
+
+    TagTree child1 = new TagTree("child-1");
+    tagTreeRepo.addChild(root, child1);
+
+    TagTree subChild1 = new TagTree("subChild-1");
+    tagTreeRepo.addChild(child1, subChild1);
+
+    TagTree subSubChild = new TagTree("subSubChild");
+    tagTreeRepo.addChild(subChild1, subSubChild);
+
+    TagTree subChild2 = new TagTree("subChild-2");
+    tagTreeRepo.addChild(child1, subChild2);
+
+    TagTree child2 = new TagTree("child-2");
+    tagTreeRepo.addChild(root, child2);
+
+    TagTree lastSubChild = new TagTree("lastSubChild");
+    tagTreeRepo.addChild(child2, lastSubChild);
+    /*
+    .
+    └── root (id: %d) [treeId: 100 | lft: 1 | rgt: 14]
+        ├── child-1 (id: %d) [treeId: 100 | lft: 2 | rgt: 9]
+        │   ├── subChild-1 (id: %d) [treeId: 100 | lft: 3 | rgt: 6]
+        │   │   └── subSubChild (id: %d) [treeId: 100 | lft: 4 | rgt: 5]
+        │   └── subChild-2 (id: %d) [treeId: 100 | lft: 7 | rgt: 8]
+        └── child-2 (id: %d) [treeId: 100 | lft: 10 | rgt: 13]
+            └── lastSubChild (id: %d) [treeId: 100 | lft: 11 | rgt: 12]
+    */
+    assertThat(tagTreeRepo.findAncestors(subChild1), containsInRelativeOrder(root, child1));
+    assertThat(tagTreeRepo.findAncestors(subChild2), containsInRelativeOrder(root, child1));
+    assertThat(tagTreeRepo.findAncestors(subSubChild), containsInRelativeOrder(root, child1, subChild1));
+  }
 }
