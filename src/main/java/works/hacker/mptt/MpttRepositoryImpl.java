@@ -258,6 +258,23 @@ public abstract class MpttRepositoryImpl<T extends MpttEntity, ID> implements Mp
   }
 
   @Override
+  public T findParent(T node) {
+    var query = String.format(
+        "SELECT node" +
+            " FROM %s node" +
+            " WHERE node.treeId = :treeId" +
+            " AND node.lft < :lft AND :rgt < node.rgt" +
+            " ORDER BY node.lft DESC",
+        entityClass.getSimpleName());
+    return getSingleResultOrNull(
+        entityManager.createQuery(query, entityClass)
+            .setParameter("treeId", node.getTreeId())
+            .setParameter("lft", node.getLft())
+            .setParameter("rgt", node.getRgt())
+            .setMaxResults(1));
+  }
+
+  @Override
   public String printTree(T node) {
     var rootString = printRootNode(node);
 

@@ -894,4 +894,106 @@ public class TagTreeRepoTest {
     assertThat(tagTreeRepo.findAncestors(subChild2), containsInRelativeOrder(root, child1));
     assertThat(tagTreeRepo.findAncestors(subSubChild), containsInRelativeOrder(root, child1, subChild1));
   }
+
+  @Test
+  public void givenRoot_whenFindParentOfRoot_thenNull()
+      throws MpttRepository.NodeAlreadyAttachedToTree, MpttRepository.TreeIdAlreadyUsed {
+    TagTree root = new TagTree("root");
+    tagTreeRepo.startTree(root, 100L);
+
+    assertThat(tagTreeRepo.findParent(root), is(nullValue()));
+  }
+
+  @Test
+  public void givenRootAndChild_whenFindParentOfChild_thenRoot()
+      throws MpttRepository.NodeAlreadyAttachedToTree, MpttRepository.TreeIdAlreadyUsed,
+      MpttRepository.NodeNotInTree {
+    TagTree root = new TagTree("root");
+    tagTreeRepo.startTree(root, 100L);
+
+    TagTree child = new TagTree("child");
+    tagTreeRepo.addChild(root, child);
+
+    assertThat(tagTreeRepo.findParent(root), is(nullValue()));
+    assertThat(tagTreeRepo.findParent(child), is(root));
+  }
+
+  @Test
+  public void givenRootChildAndSubChild_whenFindParent_thenOK()
+      throws MpttRepository.NodeAlreadyAttachedToTree, MpttRepository.TreeIdAlreadyUsed,
+      MpttRepository.NodeNotInTree {
+    TagTree root = new TagTree("root");
+    tagTreeRepo.startTree(root, 100L);
+
+    TagTree child = new TagTree("child");
+    tagTreeRepo.addChild(root, child);
+
+    TagTree subChild = new TagTree("subChild");
+    tagTreeRepo.addChild(child, subChild);
+
+    assertThat(tagTreeRepo.findParent(root), is(nullValue()));
+    assertThat(tagTreeRepo.findParent(child), is(root));
+    assertThat(tagTreeRepo.findParent(subChild), is(child));
+  }
+
+  @Test
+  public void givenRootAndTwoChildren_whenFindParent_thenOK()
+      throws MpttRepository.NodeAlreadyAttachedToTree, MpttRepository.TreeIdAlreadyUsed,
+      MpttRepository.NodeNotInTree {
+    TagTree root = new TagTree("root");
+    tagTreeRepo.startTree(root, 100L);
+
+    TagTree child1 = new TagTree("child-1");
+    tagTreeRepo.addChild(root, child1);
+
+    TagTree child2 = new TagTree("child-2");
+    tagTreeRepo.addChild(root, child2);
+
+    assertThat(tagTreeRepo.findParent(root), is(nullValue()));
+    assertThat(tagTreeRepo.findParent(child1), is(root));
+    assertThat(tagTreeRepo.findParent(child2), is(root));
+  }
+
+  @Test
+  public void givenComplexTree3_whenFindParent_thenOK()
+      throws MpttRepository.NodeAlreadyAttachedToTree, MpttRepository.TreeIdAlreadyUsed,
+      MpttRepository.NodeNotInTree {
+    TagTree root = new TagTree("root");
+    tagTreeRepo.startTree(root, 100L);
+
+    TagTree child1 = new TagTree("child-1");
+    tagTreeRepo.addChild(root, child1);
+
+    TagTree subChild1 = new TagTree("subChild-1");
+    tagTreeRepo.addChild(child1, subChild1);
+
+    TagTree subSubChild = new TagTree("subSubChild");
+    tagTreeRepo.addChild(subChild1, subSubChild);
+
+    TagTree subChild2 = new TagTree("subChild-2");
+    tagTreeRepo.addChild(child1, subChild2);
+
+    TagTree child2 = new TagTree("child-2");
+    tagTreeRepo.addChild(root, child2);
+
+    TagTree lastSubChild = new TagTree("lastSubChild");
+    tagTreeRepo.addChild(child2, lastSubChild);
+    /*
+    .
+    └── root (id: %d) [treeId: 100 | lft: 1 | rgt: 14]
+        ├── child-1 (id: %d) [treeId: 100 | lft: 2 | rgt: 9]
+        │   ├── subChild-1 (id: %d) [treeId: 100 | lft: 3 | rgt: 6]
+        │   │   └── subSubChild (id: %d) [treeId: 100 | lft: 4 | rgt: 5]
+        │   └── subChild-2 (id: %d) [treeId: 100 | lft: 7 | rgt: 8]
+        └── child-2 (id: %d) [treeId: 100 | lft: 10 | rgt: 13]
+            └── lastSubChild (id: %d) [treeId: 100 | lft: 11 | rgt: 12]
+    */
+    assertThat(tagTreeRepo.findParent(root), is(nullValue()));
+    assertThat(tagTreeRepo.findParent(child1), is(root));
+    assertThat(tagTreeRepo.findParent(child2), is(root));
+    assertThat(tagTreeRepo.findParent(subChild1), is(child1));
+    assertThat(tagTreeRepo.findParent(subChild2), is(child1));
+    assertThat(tagTreeRepo.findParent(subSubChild), is(subChild1));
+    assertThat(tagTreeRepo.findParent(lastSubChild), is(child2));
+  }
 }
