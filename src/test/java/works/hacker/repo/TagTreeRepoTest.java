@@ -481,7 +481,22 @@ public class TagTreeRepoTest {
     // @formatter:on
     String actual = tagTreeRepo.printTree(root);
     assertThat(actual, is(expected));
-  }
+
+
+    // @formatter:off
+    String expectedPartial = String.format(
+        ".\n" +
+        "└── child-1 (id: %d) [treeId: 100 | lft: 2 | rgt: 9]\n" +
+        "    ├── subChild-1 (id: %d) [treeId: 100 | lft: 3 | rgt: 6]\n" +
+        "    │   └── subSubChild (id: %d) [treeId: 100 | lft: 4 | rgt: 5]\n" +
+        "    └── subChild-2 (id: %d) [treeId: 100 | lft: 7 | rgt: 8]",
+        child1.getId(),
+        subChild1.getId(),
+        subSubChild.getId(),
+        subChild2.getId());
+    // @formatter:on
+    String actualPartial = tagTreeRepo.printTree(child1);
+    assertThat(actualPartial, is(expectedPartial));  }
 
   @Test
   public void givenComplexTree3_whenFindChildren_thenOK()
