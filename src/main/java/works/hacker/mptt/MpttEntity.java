@@ -23,7 +23,7 @@ import javax.persistence.MappedSuperclass;
  * <pre>{@code
  * @Entity
  * public class TagTree extends MpttEntity {
- * ...
+ *   //...
  *   public TagTree(String name) {
  *     super(); // important to call super to set the MpttEntity-instance defaults
  *     this.name = name;
