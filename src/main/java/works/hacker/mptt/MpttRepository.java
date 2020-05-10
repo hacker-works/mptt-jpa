@@ -19,13 +19,13 @@ public interface MpttRepository<T extends MpttEntity> {
    * The entity class should be stored in the state of the repository-instance.
    * <p>
    * The entity class is typically used when creating JPQL-queries dynamically. For example:
-   * <pre>{@code
+   * <pre><code>
    * tagTreeRepo.setEntityClass(TagTree.class);
-   * }</pre>
+   * </code></pre>
    * <p>
    * And then in the repository implementation, you might have something like:
-   * <pre>{@code
-   *   @Override
+   * <pre><code>
+   *  {@literal @}Override
    *   public T findTreeRoot(Long treeId) throws NoResultException {
    *     var query = String.format(
    *         "SELECT node FROM %s node" +
@@ -35,7 +35,7 @@ public interface MpttRepository<T extends MpttEntity> {
    *         .setParameter("treeId", treeId)
    *         .getSingleResult();
    *   }
-   * }</pre>
+   * </code></pre>
    * <p>
    * <b>NOTE:</b> The reason for this method in the interface is <b>Java Generics - Type Erasure</b>.
    * <p>
@@ -43,6 +43,8 @@ public interface MpttRepository<T extends MpttEntity> {
    * implement generic behaviour, java compiler apply type erasure. Type erasure is a process in which
    * compiler replaces a generic parameter with actual class or bridge method, so no way to obtain the
    * type even by using the Reflection API.
+   *
+   * @param entityClass the class type of the entity extending {@link MpttEntity}
    */
   void setEntityClass(Class<T> entityClass);
 

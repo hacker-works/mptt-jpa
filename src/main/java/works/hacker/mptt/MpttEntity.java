@@ -20,33 +20,33 @@ import javax.persistence.MappedSuperclass;
  * These properties are managed by the implementation of the {@link MpttRepository}.
  * <p>
  * Usage:
- * <pre>{@code
- * @Entity
- * public class TagTree extends MpttEntity {
- *   //...
- *   public TagTree(String name) {
- *     super(); // important to call super to set the MpttEntity-instance defaults
- *     this.name = name;
- *   }
+ * <pre><code>
+ * {@literal @}Entity
+ *  public class TagTree extends MpttEntity {
+ *    //...
+ *    public TagTree(String name) {
+ *      super(); // important to call super to set the MpttEntity-instance defaults
+ *      this.name = name;
+ *    }
  *
- *   // The unit tests make good use of these overrides:
- *   @Override
- *   public String toString() {
- *     return String.format("%s (id: %d) %s", getName(),  getId(), super.toString());
- *   }
+ *    // The unit tests make good use of these overrides:
+ *   {@literal @}Override
+ *    public String toString() {
+ *      return String.format("%s (id: %d) %s", getName(),  getId(), super.toString());
+ *    }
  *
- *   @Override
- *   public int hashCode() {
- *     return Objects.hash(this.toString());
- *   }
+ *   {@literal @}Override
+ *    public int hashCode() {
+ *      return Objects.hash(this.toString());
+ *    }
  *
- *   @SuppressWarnings("EqualsWhichDoesntCheckParameterClass")
- *   @Override
- *   public boolean equals(Object o) {
- *     return this.toString().equals(o.toString());
- *   }
- * }
- * }</pre>
+ *   {@literal @}SuppressWarnings("EqualsWhichDoesntCheckParameterClass")
+ *   {@literal @}Override
+ *    public boolean equals(Object o) {
+ *      return this.toString().equals(o.toString());
+ *    }
+ *  }
+ * </code></pre>
  *
  * @see works.hacker.model.TagTree demo sample extending MpttEntity
  * @see MpttRepository
