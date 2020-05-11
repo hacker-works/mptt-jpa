@@ -22,11 +22,13 @@ The nested set model is using a technique to number the nodes according to a tre
 Let's assume the following sample tree structure:
 
 <img src="diagrams/01-sample-tree.svg" alt="Fig. 1: Sample Tree Structure." style="zoom:88%;" />
+
 **Fig. 1: Sample Tree Structure.**
 
 Then the nested set traversal would assign the following `lft` and `rgt` numbers as each node is visited *(NOTE: leaf nodes are visited only once)*:
 
 <img src="diagrams/02-tree-traversal.svg" alt="Fig. 2: MPTT Tree Traversal." style="zoom:100%;" />
+
 **Fig. 2: MPTT Tree Traversal.**
 
 The resulting flat table to persist in the relational database would be:
