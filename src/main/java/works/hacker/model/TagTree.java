@@ -17,12 +17,20 @@ import java.util.Objects;
  */
 @Entity
 public class TagTree extends MpttEntity {
+  private static final String NO_NAME = "NO_NAME";
+
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private long id;
 
   @Column(nullable = false)
   private final String name;
+
+  @SuppressWarnings({"Unused"})
+  public TagTree() {
+    super();
+    this.name = NO_NAME;
+  }
 
   public TagTree(String name) {
     super();
