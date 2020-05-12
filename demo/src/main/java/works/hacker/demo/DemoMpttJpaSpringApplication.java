@@ -9,14 +9,13 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.stereotype.Component;
 import works.hacker.model.TagTree;
-import works.hacker.mptt.MpttEntity;
 import works.hacker.mptt.MpttRepository;
 import works.hacker.repo.TagTreeRepository;
 
 import javax.annotation.PostConstruct;
 
 @SpringBootApplication
-@EntityScan(basePackages = "works.hacker.model", basePackageClasses = {MpttEntity.class})
+@EntityScan(basePackages = "works.hacker.model")
 @EnableJpaRepositories(basePackages = "works.hacker.repo")
 public class DemoMpttJpaSpringApplication {
   public static void main(String[] args) {
@@ -33,7 +32,7 @@ public class DemoMpttJpaSpringApplication {
     @PostConstruct
     public void run()
         throws MpttRepository.NodeAlreadyAttachedToTree, MpttRepository.TreeIdAlreadyUsed,
-        MpttRepository.NodeNotInTree {
+        MpttRepository.NodeNotInTree, MpttRepository.NodeNotChildOfParent {
       tagTreeRepo.setEntityClass(TagTree.class);
 
       tagTreeRepo.count();
@@ -61,6 +60,19 @@ public class DemoMpttJpaSpringApplication {
       tagTreeRepo.addChild(child2, lastSubChild);
 
       LOG.info("printTree(root)\n" + tagTreeRepo.printTree(tagTreeRepo.findByName("root")));
+      LOG.info("printTree(root)\n" + tagTreeRepo.printTree(tagTreeRepo.findByName("child-1")));
+
+      LOG.info("findChildren(root)\n" + tagTreeRepo.findChildren(tagTreeRepo.findTreeRoot(100L)));
+      LOG.info("findAncestors(subSubChild)\n" +
+          tagTreeRepo.findAncestors(tagTreeRepo.findByName("subSubChild")));
+      LOG.info("findParent(subSubChild)\n" +
+          tagTreeRepo.findParent(tagTreeRepo.findByName("subSubChild")));
+      LOG.info("findSubTree(child1)\n" + tagTreeRepo.findSubTree(tagTreeRepo.findByName("child-1")));
+
+      tagTreeRepo.removeChild(tagTreeRepo.findByName("root"), tagTreeRepo.findByName("child-1"));
+
+      LOG.info("printTree(root) after removeChild(parent, child1)\n" +
+          tagTreeRepo.printTree(tagTreeRepo.findByName("root")));
     }
   }
 
