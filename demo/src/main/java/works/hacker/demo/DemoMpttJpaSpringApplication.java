@@ -60,7 +60,7 @@ public class DemoMpttJpaSpringApplication {
       TagTree lastSubChild = new TagTree("lastSubChild");
       tagTreeRepo.addChild(child2, lastSubChild);
 
-      LOG.info("printTree(root)\n" + tagTreeRepo.printTree(root));
+      LOG.info("printTree(root)\n" + tagTreeRepo.printTree(tagTreeRepo.findByName("root")));
     }
   }
 
