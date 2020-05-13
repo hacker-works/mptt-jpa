@@ -92,6 +92,7 @@ public abstract class MpttRepositoryImpl<T extends MpttEntity> implements MpttRe
     child.setTreeId(parent.getTreeId());
     child.setLft(childLft);
     child.setRgt(childRgt);
+    child.setDepth(parent.getDepth() + 1);
 
     entityManager.persist(child);
   }
@@ -207,23 +208,15 @@ public abstract class MpttRepositoryImpl<T extends MpttEntity> implements MpttRe
         "SELECT child" +
             " FROM %s child" +
             " WHERE child.treeId = :treeId" +
-            " AND :lft < child.lft AND child.rgt < :rgt",
+            " AND :lft < child.lft AND child.rgt < :rgt" +
+            " AND child.depth = :depth",
         entityClass.getSimpleName());
-    var allChildren = entityManager.createQuery(query, entityClass)
+    return entityManager.createQuery(query, entityClass)
         .setParameter("treeId", node.getTreeId())
         .setParameter("lft", node.getLft())
         .setParameter("rgt", node.getRgt())
+        .setParameter("depth", node.getDepth() + 1)
         .getResultList();
-    return allChildren.stream()
-        .filter(child -> depth(child, allChildren) == 0L)
-        .collect(Collectors.toList());
-  }
-
-  // TODO: consider using a depth property, instead of computing it on the flight
-  protected Long depth(T child, List<T> allChildren) {
-    return allChildren.stream()
-        .filter(node -> node.getLft() < child.getLft() && child.getRgt() < node.getRgt())
-        .count();
   }
 
   @Override
