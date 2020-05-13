@@ -234,7 +234,7 @@ var partialTree = tagTreeRepo.printTree(child1);
 To get a sorted list of the direct children of a node:
 
 ```java
-var root = tagTreeRepo.findTreeRoot(100L);
+var root = tagTreeRepo.findTreeRoot(treeId);
 var directChildren = tagTreeRepo.findChildren(root);
 ```
 
