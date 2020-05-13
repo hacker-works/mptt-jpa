@@ -63,7 +63,7 @@ To use `mptt-jpa`:
 <dependency>
     <groupId>works.hacker</groupId>
     <artifactId>mptt-jpa</artifactId>
-    <version>0.0.4</version>
+    <version>0.0.5</version>
 </dependency>
 ``` 
 
@@ -173,7 +173,7 @@ Or create the sample tree from **Fig. 1: Sample Tree Structure.**
 
 ```java
 TagTree root = new TagTree("root");
-tagTreeRepo.startTree(root, 100L);
+Long treeId = tagTreeRepo.startTree(root);
 
 TagTree child1 = new TagTree("child-1");
 tagTreeRepo.addChild(root, child1);
@@ -197,7 +197,7 @@ tagTreeRepo.addChild(child2, lastSubChild);
 You can print the tree to a string:
 
 ```java
-var root = tagTreeRepo.findTreeRoot(100L);
+var root = tagTreeRepo.findTreeRoot(treeId);
 var fullTree = tagTreeRepo.printTree(root);
 ```
 

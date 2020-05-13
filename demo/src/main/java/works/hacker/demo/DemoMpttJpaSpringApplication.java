@@ -31,14 +31,14 @@ public class DemoMpttJpaSpringApplication {
 
     @PostConstruct
     public void run()
-        throws MpttRepository.NodeAlreadyAttachedToTree, MpttRepository.TreeIdAlreadyUsed,
-        MpttRepository.NodeNotInTree, MpttRepository.NodeNotChildOfParent {
+        throws MpttRepository.NodeAlreadyAttachedToTree, MpttRepository.NodeNotInTree,
+        MpttRepository.NodeNotChildOfParent {
       tagTreeRepo.setEntityClass(TagTree.class);
 
       tagTreeRepo.count();
 
       TagTree root = new TagTree("root");
-      tagTreeRepo.startTree(root, 100L);
+      Long treeId = tagTreeRepo.startTree(root);
       LOG.info("printTree(root)\n" + tagTreeRepo.printTree(root));
 
       TagTree child1 = new TagTree("child-1");
@@ -62,7 +62,7 @@ public class DemoMpttJpaSpringApplication {
       LOG.info("printTree(root)\n" + tagTreeRepo.printTree(tagTreeRepo.findByName("root")));
       LOG.info("printTree(root)\n" + tagTreeRepo.printTree(tagTreeRepo.findByName("child-1")));
 
-      LOG.info("findChildren(root)\n" + tagTreeRepo.findChildren(tagTreeRepo.findTreeRoot(100L)));
+      LOG.info("findChildren(root)\n" + tagTreeRepo.findChildren(tagTreeRepo.findTreeRoot(treeId)));
       LOG.info("findAncestors(subSubChild)\n" +
           tagTreeRepo.findAncestors(tagTreeRepo.findByName("subSubChild")));
       LOG.info("findParent(subSubChild)\n" +
