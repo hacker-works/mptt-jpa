@@ -51,12 +51,11 @@ public interface MpttRepository<T extends MpttEntity> {
   /**
    * Starts a new tree.
    *
-   * @param node   the node to become the root node of this tree; should be a mint node; must not be null
-   * @param treeId the identifier for the new tree, that is not used by another tree; must not be null
+   * @param node the node to become the root node of this tree; should be a mint node; must not be null
+   * @return the generated tree id
    * @throws NodeAlreadyAttachedToTree in case the node is part of another tree
-   * @throws TreeIdAlreadyUsed         in case the given {@code treeId} is used by another tree
    */
-  void startTree(T node, Long treeId) throws NodeAlreadyAttachedToTree, TreeIdAlreadyUsed;
+  Long startTree(T node) throws NodeAlreadyAttachedToTree;
 
   /**
    * Finds the tree root node for a given {@code treeId}.
@@ -268,12 +267,6 @@ public interface MpttRepository<T extends MpttEntity> {
    * @return the string representation of the tree / sub-tree
    */
   String printTree(T node);
-
-  class TreeIdAlreadyUsed extends Exception {
-    public TreeIdAlreadyUsed(String message) {
-      super(message);
-    }
-  }
 
   class NodeAlreadyAttachedToTree extends Exception {
     public NodeAlreadyAttachedToTree(String message) {

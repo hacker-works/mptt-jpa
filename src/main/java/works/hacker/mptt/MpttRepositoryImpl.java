@@ -7,6 +7,7 @@ import javax.persistence.TypedQuery;
 import javax.transaction.Transactional;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -24,15 +25,16 @@ public abstract class MpttRepositoryImpl<T extends MpttEntity> implements MpttRe
   }
 
   @Override
-  public void startTree(T node, Long treeId) throws NodeAlreadyAttachedToTree, TreeIdAlreadyUsed {
+  public Long startTree(T node) throws NodeAlreadyAttachedToTree {
     ensureNodeIsNotAttachedToAnyTree(node);
-    ensureTreeIdIsNotUsed(treeId);
 
+    var treeId = generateTreeId();
     node.setTreeId(treeId);
     node.setLft(1L);
     node.setRgt(2L);
 
     entityManager.persist(node);
+    return treeId;
   }
 
   protected void ensureNodeIsNotAttachedToAnyTree(T node) throws NodeAlreadyAttachedToTree {
@@ -42,13 +44,20 @@ public abstract class MpttRepositoryImpl<T extends MpttEntity> implements MpttRe
     }
   }
 
-  protected void ensureTreeIdIsNotUsed(Long treeId) throws TreeIdAlreadyUsed {
+  protected Long generateTreeId() {
+    Long treeId = new Random().nextLong();
+    var query = String.format(
+        "SELECT node FROM %s node WHERE node.treeId = :treeId",
+        entityClass.getSimpleName());
     try {
-      findTreeRoot(treeId);
-      throw new TreeIdAlreadyUsed(String.format("%d already used in another tree", treeId));
+      entityManager.createQuery(query, entityClass)
+          .setParameter("treeId", treeId)
+          .setMaxResults(1)
+          .getSingleResult();
     } catch (NoResultException e) {
-      // do nothing;
+      return treeId;
     }
+    return generateTreeId();
   }
 
   @Override

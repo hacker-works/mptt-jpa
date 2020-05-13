@@ -55,7 +55,7 @@ import javax.persistence.MappedSuperclass;
  */
 @MappedSuperclass
 public class MpttEntity {
-  public static final long NO_TREE_ID = 0L;
+  public static final long NO_TREE_ID = -1L;
   public static final long DEFAULT_LFT = 1L;
   public static final long DEFAULT_RGT = 2L;
   public static final long DEFAULT_DEPTH = 0L;
