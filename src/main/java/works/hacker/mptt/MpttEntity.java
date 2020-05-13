@@ -58,6 +58,7 @@ public class MpttEntity {
   public static final long NO_TREE_ID = 0L;
   public static final long DEFAULT_LFT = 1L;
   public static final long DEFAULT_RGT = 2L;
+  public static final long DEFAULT_DEPTH = 0L;
 
   @Column(nullable = false)
   private long treeId;
@@ -68,10 +69,14 @@ public class MpttEntity {
   @Column(nullable = false)
   private long rgt;
 
+  @Column(nullable = false)
+  private long depth;
+
   public MpttEntity() {
     this.treeId = NO_TREE_ID;
     this.lft = DEFAULT_LFT;
     this.rgt = DEFAULT_RGT;
+    this.depth = DEFAULT_DEPTH;
   }
 
   public boolean hasTreeId() {
@@ -100,6 +105,14 @@ public class MpttEntity {
 
   public void setRgt(long rgt) {
     this.rgt = rgt;
+  }
+
+  public long getDepth() {
+    return depth;
+  }
+
+  public void setDepth(long depth) {
+    this.depth = depth;
   }
 
   @Override
