@@ -31,8 +31,8 @@ public class DemoMpttJpaSpringApplication {
 
     @PostConstruct
     public void run()
-        throws MpttRepository.NodeAlreadyAttachedToTree, MpttRepository.TreeIdAlreadyUsed,
-        MpttRepository.NodeNotInTree, MpttRepository.NodeNotChildOfParent {
+        throws MpttRepository.NodeAlreadyAttachedToTree, MpttRepository.NodeNotInTree,
+        MpttRepository.NodeNotChildOfParent {
       tagTreeRepo.setEntityClass(TagTree.class);
 
       tagTreeRepo.count();
