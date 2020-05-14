@@ -1,5 +1,7 @@
 package works.hacker.mptt;
 
+import works.hacker.mptt.classic.MpttEntity;
+
 import javax.persistence.NoResultException;
 import java.util.List;
 
@@ -8,11 +10,9 @@ import java.util.List;
  * <p>
  * All mutator operations are assumed to persist the changes.
  *
- * @see MpttRepositoryImpl
- * @see <a href="https://github.com/hacker-works/mptt-jpa">README</a>
- * @see <a href="https://github.com/hacker-works/mptt-jpa/blob/develop/src/test/java/works/hacker/repo/TagTreeRepoTest.java">TagTreeRepoTest</a>
+ * @see works.hacker.mptt.classic.MpttRepository
  */
-public interface MpttRepository<T extends MpttEntity> {
+public interface TreeRepository<T extends TreeEntity> {
   /**
    * Sets the class of the entity.
    * <p>
@@ -110,68 +110,6 @@ public interface MpttRepository<T extends MpttEntity> {
   List<T> removeChild(T parent, T child) throws NodeNotInTree, NodeNotChildOfParent;
 
   /**
-   * <b>Internal method:</b> Finds the right-most child of a given node.
-   * <p>
-   * This method should not be called directly, but {@link MpttRepository#addChild} depends on it.
-   * <p>
-   * Given the following MPTT representation:
-   * <pre>
-   * .
-   * └── root [lft: 1 | rgt: 14]
-   *     ├── child1 [lft: 2 | rgt: 9]
-   *     │   ├── subChild1 [lft: 3 | rgt: 6]
-   *     │   │   └── subSubChild [lft: 4 | rgt: 5]
-   *     │   └── subChild2 [lft: 7 | rgt: 8]
-   *     └── child2 [lft: 10 | rgt: 13]
-   *         └── lastSubChild [lft: 11 | rgt: 12]
-   * </pre>
-   * When {@code tagTreeRepo.findRightMostChild(child1)}, then the right most child is
-   * {@code subChild-2 [lft: 7 | rgt: 8]}
-   * <p>
-   * When {@code tagTreeRepo.findRightMostChild(root)}, then the right most child is
-   * {@code child2 [lft: 10 | rgt: 13]}
-   *
-   * @param node the parent node for which to find the right most child
-   * @return the right most child; or null, if there are no children
-   */
-  T findRightMostChild(T node);
-
-  /**
-   * <b>Internal method:</b> Finds the nodes matching the specified criteria.
-   * <p>
-   * This method should not be called directly, but {@link MpttRepository#addChild} depends on it.
-   *
-   * @param treeId the value for the {@code treeId}-criteria
-   * @param lft    the value for the {@code lft}-criteria
-   * @return the matching nodes
-   */
-  List<T> findByTreeIdAndLftGreaterThanEqual(Long treeId, Long lft);
-
-  /**
-   * <b>Internal method:</b> Finds the nodes matching the specified criteria.
-   * <p>
-   * This method should not be called directly, but {@link MpttRepository#addChild} and
-   * {@link MpttRepository#removeChild} depend on it.
-   *
-   * @param treeId the value for the {@code treeId}-criteria
-   * @param lft    the value for the {@code lft}-criteria
-   * @return the matching nodes
-   */
-  List<T> findByTreeIdAndLftGreaterThan(Long treeId, Long lft);
-
-  /**
-   * <b>Internal method:</b> Finds the nodes matching the specified criteria.
-   * <p>
-   * This method should not be called directly, but {@link MpttRepository#addChild} and
-   * {@link MpttRepository#removeChild} depend on it.
-   *
-   * @param treeId the value for the {@code treeId}-criteria
-   * @param rgt    the value for the {@code rgt}-criteria
-   * @return the matching nodes
-   */
-  List<T> findByTreeIdAndRgtGreaterThan(Long treeId, Long rgt);
-
-  /**
    * Finds the direct children of a given parent node.
    * <p>
    * Given the following tree representation:
@@ -259,14 +197,6 @@ public interface MpttRepository<T extends MpttEntity> {
    * @return the direct parent node; or null if the given node is a root node
    */
   T findParent(T node);
-
-  /**
-   * Prints a string representation of the tree / sub-tree of a given node.
-   *
-   * @param node must not be null; must be part of a tree
-   * @return the string representation of the tree / sub-tree
-   */
-  String printTree(T node);
 
   class NodeAlreadyAttachedToTree extends Exception {
     public NodeAlreadyAttachedToTree(String message) {

@@ -1,4 +1,6 @@
-package works.hacker.mptt;
+package works.hacker.mptt.classic;
+
+import works.hacker.mptt.TreeEntity;
 
 import javax.persistence.Column;
 import javax.persistence.MappedSuperclass;
@@ -54,14 +56,10 @@ import javax.persistence.MappedSuperclass;
  * @see <a href="https://github.com/hacker-works/mptt-jpa">README</a>
  */
 @MappedSuperclass
-public class MpttEntity {
-  public static final long NO_TREE_ID = -1L;
+public class MpttEntity extends TreeEntity {
   public static final long DEFAULT_LFT = 1L;
   public static final long DEFAULT_RGT = 2L;
   public static final long DEFAULT_DEPTH = 0L;
-
-  @Column(nullable = false)
-  private long treeId;
 
   @Column(nullable = false)
   private long lft;
@@ -73,22 +71,10 @@ public class MpttEntity {
   private long depth;
 
   public MpttEntity() {
-    this.treeId = NO_TREE_ID;
+    super();
     this.lft = DEFAULT_LFT;
     this.rgt = DEFAULT_RGT;
     this.depth = DEFAULT_DEPTH;
-  }
-
-  public boolean hasTreeId() {
-    return treeId != NO_TREE_ID;
-  }
-
-  public Long getTreeId() {
-    return treeId;
-  }
-
-  public void setTreeId(Long treeId) {
-    this.treeId = treeId;
   }
 
   public long getLft() {

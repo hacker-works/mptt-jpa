@@ -53,7 +53,7 @@ Even though the MPTT implementation provided in [`works.hacker.mptt`](https://gi
 
 To use `mptt-jpa`:
 1. Add the `works.hacker.mptt-jpa`-dependency to the `pom.xml` *(in case Maven is used)*.
-2. Add a custom entity-type by extending the [`works.hacker.mptt.MpttEntity`](https://github.com/hacker-works/mptt-jpa/blob/master/src/main/java/works/hacker/mptt/MpttEntity.java)-mapped superclass.
+2. Add a custom entity-type by extending the [`works.hacker.mptt.classic.MpttEntity`](https://github.com/hacker-works/mptt-jpa/blob/master/src/main/java/works/hacker/mptt/MpttEntity.java)-mapped superclass.
 3. Add a custom repository interface by extending the [`works.hacker.works.MpttRepository`](https://github.com/hacker-works/mptt-jpa/blob/master/src/main/java/works/hacker/mptt/MpttRepository.java)-interface.
 4. Add a custom repository implementation by extending the reference [`works.hacker.works.MpttRepositoryImpl`](https://github.com/hacker-works/mptt-jpa/blob/master/src/main/java/works/hacker/mptt/MpttRepositoryImpl.java)-implementation.
 

@@ -13,8 +13,9 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.test.context.support.AnnotationConfigContextLoader;
 import works.hacker.config.TagTreeJpaConfig;
 import works.hacker.model.TagTree;
-import works.hacker.mptt.MpttEntity;
-import works.hacker.mptt.MpttRepository;
+import works.hacker.mptt.TreeUtils;
+import works.hacker.mptt.classic.MpttEntity;
+import works.hacker.mptt.classic.MpttRepository;
 
 import javax.annotation.Resource;
 import javax.transaction.Transactional;
@@ -36,9 +37,12 @@ public class TagTreeRepoTest {
   @Resource
   TagTreeRepository tagTreeRepo;
 
+  protected TreeUtils<TagTree> utils;
+
   @Before
   public void init() {
     tagTreeRepo.setEntityClass(TagTree.class);
+    utils = new TreeUtils<>(tagTreeRepo);
   }
 
   @Test
@@ -162,7 +166,7 @@ public class TagTreeRepoTest {
         "└── root (id: %d) [treeId: %d | lft: 1 | rgt: 2]",
         root.getId(), root.getTreeId());
     // @formatter:on
-    String actual = tagTreeRepo.printTree(root);
+    String actual = utils.printTree(root);
     assertThat(actual, is(expected));
   }
 
@@ -183,7 +187,7 @@ public class TagTreeRepoTest {
         root.getId(), root.getTreeId(),
         child.getId(), child.getTreeId());
     // @formatter:on
-    String actual = tagTreeRepo.printTree(root);
+    String actual = utils.printTree(root);
     assertThat(actual, is(expected));
   }
 
@@ -238,7 +242,7 @@ public class TagTreeRepoTest {
         child1.getId(), child1.getTreeId(),
         child2.getId(), child2.getTreeId());
     // @formatter:on
-    String actual = tagTreeRepo.printTree(root);
+    String actual = utils.printTree(root);
     assertThat(actual, is(expected));
   }
 
@@ -281,7 +285,7 @@ public class TagTreeRepoTest {
         child.getId(), child.getTreeId(),
         subChild.getId(), subChild.getTreeId());
     // @formatter:on
-    String actual = tagTreeRepo.printTree(root);
+    String actual = utils.printTree(root);
     assertThat(actual, is(expected));
   }
 
@@ -312,7 +316,7 @@ public class TagTreeRepoTest {
         subChild.getId(), subChild.getTreeId(),
         child2.getId(), child2.getTreeId());
     // @formatter:on
-    String actual = tagTreeRepo.printTree(root);
+    String actual = utils.printTree(root);
     assertThat(actual, is(expected));
   }
 
@@ -368,7 +372,7 @@ public class TagTreeRepoTest {
         subSubChild.getId(), subSubChild.getTreeId(),
         child2.getId(), child2.getTreeId());
     // @formatter:on
-    String actual = tagTreeRepo.printTree(root);
+    String actual = utils.printTree(root);
     assertThat(actual, is(expected));
   }
 
@@ -445,7 +449,7 @@ public class TagTreeRepoTest {
         child2.getId(), child2.getTreeId(),
         lastSubChild.getId(), lastSubChild.getTreeId());
     // @formatter:on
-    String actual = tagTreeRepo.printTree(root);
+    String actual = utils.printTree(root);
     assertThat(actual, is(expected));
 
 
@@ -461,7 +465,7 @@ public class TagTreeRepoTest {
         subSubChild.getId(),  subSubChild.getTreeId(),
         subChild2.getId(), subChild2.getTreeId());
     // @formatter:on
-    String actualPartial = tagTreeRepo.printTree(child1);
+    String actualPartial = utils.printTree(child1);
     assertThat(actualPartial, is(expectedPartial));
   }
 
@@ -553,9 +557,9 @@ public class TagTreeRepoTest {
     TagTree child = new TagTree("child");
     tagTreeRepo.addChild(parent, child);
 
-    LOG.debug(String.format("before:\n%s", tagTreeRepo.printTree(parent)));
+    LOG.debug(String.format("before:\n%s", utils.printTree(parent)));
     List<TagTree> removed = tagTreeRepo.removeChild(parent, child);
-    LOG.debug(String.format("after\n%s", tagTreeRepo.printTree(parent)));
+    LOG.debug(String.format("after\n%s", utils.printTree(parent)));
 
     TagTree actual = tagTreeRepo.findByName("parent");
     assertThat(actual.getLft(), is(1L));
@@ -582,9 +586,9 @@ public class TagTreeRepoTest {
     TagTree subChild = new TagTree("subChild");
     tagTreeRepo.addChild(child, subChild);
 
-    LOG.debug(String.format("before:\n%s", tagTreeRepo.printTree(parent)));
+    LOG.debug(String.format("before:\n%s", utils.printTree(parent)));
     List<TagTree> removed = tagTreeRepo.removeChild(parent, child);
-    LOG.debug(String.format("after:\n%s", tagTreeRepo.printTree(parent)));
+    LOG.debug(String.format("after:\n%s", utils.printTree(parent)));
 
     TagTree actual = tagTreeRepo.findByName("parent");
     assertThat(actual.getLft(), is(1L));
@@ -611,9 +615,9 @@ public class TagTreeRepoTest {
     TagTree child2 = new TagTree("child-2");
     tagTreeRepo.addChild(parent, child2);
 
-    LOG.debug(String.format("before:\n%s", tagTreeRepo.printTree(parent)));
+    LOG.debug(String.format("before:\n%s", utils.printTree(parent)));
     List<TagTree> removed = tagTreeRepo.removeChild(parent, child1);
-    LOG.debug(String.format("after:\n%s", tagTreeRepo.printTree(parent)));
+    LOG.debug(String.format("after:\n%s", utils.printTree(parent)));
 
     TagTree actual = tagTreeRepo.findByName("parent");
     assertThat(actual.getLft(), is(1L));
@@ -644,9 +648,9 @@ public class TagTreeRepoTest {
     TagTree subChild = new TagTree("subChild");
     tagTreeRepo.addChild(child, subChild);
 
-    LOG.debug(String.format("before:\n%s", tagTreeRepo.printTree(parent)));
+    LOG.debug(String.format("before:\n%s", utils.printTree(parent)));
     List<TagTree> removed = tagTreeRepo.removeChild(parent, subChild);
-    LOG.debug(String.format("after:\n%s", tagTreeRepo.printTree(parent)));
+    LOG.debug(String.format("after:\n%s", utils.printTree(parent)));
 
     TagTree actual = tagTreeRepo.findByName("parent");
     assertThat(actual.getLft(), is(1L));
@@ -691,9 +695,9 @@ public class TagTreeRepoTest {
     TagTree lastSubChild = new TagTree("lastSubChild");
     tagTreeRepo.addChild(child2, lastSubChild);
 
-    LOG.debug(String.format("before:\n%s", tagTreeRepo.printTree(root)));
+    LOG.debug(String.format("before:\n%s", utils.printTree(root)));
     tagTreeRepo.removeChild(root, child1);
-    LOG.debug(String.format("after:\n%s", tagTreeRepo.printTree(root)));
+    LOG.debug(String.format("after:\n%s", utils.printTree(root)));
 
     // @formatter:off
     String expected = String.format(
@@ -705,7 +709,7 @@ public class TagTreeRepoTest {
         child2.getId(), child2.getTreeId(),
         lastSubChild.getId(), lastSubChild.getTreeId());
     // @formatter:on
-    String actual = tagTreeRepo.printTree(root);
+    String actual = utils.printTree(root);
     assertThat(actual, is(expected));
   }
 
@@ -734,9 +738,9 @@ public class TagTreeRepoTest {
     TagTree lastSubChild = new TagTree("lastSubChild");
     tagTreeRepo.addChild(child2, lastSubChild);
 
-    LOG.debug(String.format("before:\n%s", tagTreeRepo.printTree(root)));
+    LOG.debug(String.format("before:\n%s", utils.printTree(root)));
     tagTreeRepo.removeChild(root, child2);
-    LOG.debug(String.format("after:\n%s", tagTreeRepo.printTree(root)));
+    LOG.debug(String.format("after:\n%s", utils.printTree(root)));
 
     // @formatter:off
     String expected = String.format(
@@ -752,7 +756,7 @@ public class TagTreeRepoTest {
         subSubChild.getId(), subSubChild.getTreeId(),
         subChild2.getId(), subChild2.getTreeId());
     // @formatter:on
-    String actual = tagTreeRepo.printTree(root);
+    String actual = utils.printTree(root);
     assertThat(actual, is(expected));
   }
 
@@ -780,7 +784,7 @@ public class TagTreeRepoTest {
     TagTree lastSubChild = new TagTree("lastSubChild");
     tagTreeRepo.addChild(child2, lastSubChild);
 
-    LOG.debug(String.format("tree to search for root:\n%s", tagTreeRepo.printTree(root)));
+    LOG.debug(String.format("tree to search for root:\n%s", utils.printTree(root)));
 
     var actual = tagTreeRepo.findTreeRoot(root.getTreeId());
     assertThat(actual, is(root));

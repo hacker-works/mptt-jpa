@@ -1,13 +1,13 @@
 package works.hacker.model;
 
-import works.hacker.mptt.MpttEntity;
+import works.hacker.mptt.classic.MpttEntity;
 
 import javax.persistence.*;
 import java.util.Objects;
 
-/** Demo usage of the {@link works.hacker.mptt.MpttEntity}.
+/** Demo usage of the {@link MpttEntity}.
  * <p>
- * Also used in the unit / integrations tests, as the {@link works.hacker.mptt.MpttEntity} is annotated
+ * Also used in the unit / integrations tests, as the {@link MpttEntity} is annotated
  * with {@link javax.persistence.MappedSuperclass} and can not be used standalone.
  *
  * @see works.hacker.repo.TagTreeRepositoryCustom
