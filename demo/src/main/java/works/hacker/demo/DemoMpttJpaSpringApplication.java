@@ -10,13 +10,13 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.stereotype.Component;
 import works.hacker.model.TagTree;
 import works.hacker.mptt.MpttRepository;
-import works.hacker.repo.TagTreeRepository;
+import works.hacker.repo.classic.repo.TagTreeRepository;
 
 import javax.annotation.PostConstruct;
 
 @SpringBootApplication
 @EntityScan(basePackages = "works.hacker.model")
-@EnableJpaRepositories(basePackages = "works.hacker.repo")
+@EnableJpaRepositories(basePackages = "works.hacker.repo.classic.repo")
 public class DemoMpttJpaSpringApplication {
   public static void main(String[] args) {
     SpringApplication.run(DemoMpttJpaSpringApplication.class, args);

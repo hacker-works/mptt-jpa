@@ -6,7 +6,7 @@ import javax.persistence.Column;
 import javax.persistence.MappedSuperclass;
 
 @MappedSuperclass
-public class DyadicFractionsEntity extends TreeEntity {
+public class DyadicEntity extends TreeEntity {
   public static final long START = 0;
   public static final long END = 1;
 
@@ -28,9 +28,12 @@ public class DyadicFractionsEntity extends TreeEntity {
   @Column(nullable = false)
   private double tail;
 
-  public DyadicFractionsEntity() {
+  public DyadicEntity() {
     super();
+    setNodeDefaults();
+  }
 
+  public void setNodeDefaults() {
     this.headN = START;
     this.headD = END;
 

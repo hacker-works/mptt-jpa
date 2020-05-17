@@ -1,22 +1,27 @@
-package works.hacker.model;
+package works.hacker.model.dyadic;
 
 import works.hacker.mptt.classic.MpttEntity;
+import works.hacker.mptt.dyadic.DyadicEntity;
+import works.hacker.repo.classic.MpttNodeRepository;
+import works.hacker.repo.classic.MpttNodeRepositoryCustom;
+import works.hacker.repo.classic.MpttNodeRepositoryImpl;
 
 import javax.persistence.*;
 import java.util.Objects;
 
-/** Demo usage of the {@link MpttEntity}.
+/**
+ * Demo usage of the {@link DyadicEntity}.
  * <p>
  * Also used in the unit / integrations tests, as the {@link MpttEntity} is annotated
- * with {@link javax.persistence.MappedSuperclass} and can not be used standalone.
+ * with {@link MappedSuperclass} and can not be used standalone.
  *
- * @see works.hacker.repo.TagTreeRepositoryCustom
- * @see works.hacker.repo.TagTreeRepositoryImpl
- * @see works.hacker.repo.TagTreeRepository
+ * @see MpttNodeRepositoryCustom
+ * @see MpttNodeRepositoryImpl
+ * @see MpttNodeRepository
  * @see <a href="https://github.com/hacker-works/mptt-jpa">README</a>
  */
 @Entity
-public class TagTree extends MpttEntity {
+public class DyadicNode extends DyadicEntity {
   private static final String NO_NAME = "NO_NAME";
 
   @Id
@@ -27,12 +32,12 @@ public class TagTree extends MpttEntity {
   private final String name;
 
   @SuppressWarnings({"Unused"})
-  public TagTree() {
+  public DyadicNode() {
     super();
     this.name = NO_NAME;
   }
 
-  public TagTree(String name) {
+  public DyadicNode(String name) {
     super();
     this.name = name;
   }
@@ -47,7 +52,7 @@ public class TagTree extends MpttEntity {
 
   @Override
   public String toString() {
-    return String.format("%s (id: %d) %s", getName(),  getId(), super.toString());
+    return String.format("%s (id: %d) %s", getName(), getId(), super.toString());
   }
 
   @Override

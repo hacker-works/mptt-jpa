@@ -1,5 +1,6 @@
 package works.hacker.mptt.classic;
 
+import works.hacker.model.classic.MpttNode;
 import works.hacker.mptt.TreeEntity;
 
 import javax.persistence.Column;
@@ -50,7 +51,7 @@ import javax.persistence.MappedSuperclass;
  *  }
  * </code></pre>
  *
- * @see works.hacker.model.TagTree demo sample extending MpttEntity
+ * @see MpttNode demo sample extending MpttEntity
  * @see MpttRepository
  * @see MpttRepositoryImpl
  * @see <a href="https://github.com/hacker-works/mptt-jpa">README</a>
