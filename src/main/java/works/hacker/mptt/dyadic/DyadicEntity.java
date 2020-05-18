@@ -11,6 +11,9 @@ public class DyadicEntity extends TreeEntity {
   public static final long END = 1;
 
   @Column(nullable = false)
+  private long depth;
+
+  @Column(nullable = false)
   private long headN;
 
   @Column(nullable = false)
@@ -34,6 +37,8 @@ public class DyadicEntity extends TreeEntity {
   }
 
   public void setNodeDefaults() {
+    this.depth = START;
+
     this.headN = START;
     this.headD = END;
 
@@ -50,6 +55,14 @@ public class DyadicEntity extends TreeEntity {
 
   private void updateTail() {
     this.tail = (double) tailN / (double) tailD;
+  }
+
+  public long getDepth() {
+    return depth;
+  }
+
+  public void setDepth(long depth) {
+    this.depth = depth;
   }
 
   public long getHeadN() {
@@ -88,6 +101,14 @@ public class DyadicEntity extends TreeEntity {
     if (tailD == 0) throw new IllegalArgumentException("Will lead to division by zero");
     this.tailD = tailD;
     updateTail();
+  }
+
+  public double getHead() {
+    return head;
+  }
+
+  public double getTail() {
+    return tail;
   }
 
   @Override
