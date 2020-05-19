@@ -8,8 +8,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 
-public abstract class DyadicRepositoryImpl<T extends DyadicEntity> implements
-    DyadicRepository<T> {
+public abstract class DyadicRepositoryImpl<T extends DyadicEntity> implements DyadicRepository<T> {
   @PersistenceContext
   EntityManager entityManager;
 
@@ -100,15 +99,40 @@ public abstract class DyadicRepositoryImpl<T extends DyadicEntity> implements
     child.setTailD(2 * sibling.getTailD());
   }
 
+  @Override
+  public List<T> removeChild(T parent, T child) throws NodeNotInTree, NodeNotChildOfParent {
+    ensureParentIsAttachedToTree(parent);
+    ensureChildOfParent(parent, child);
+
+    var removed = findSubTree(child);
+    removed.forEach(this::removeNode);
+    return removed;
+  }
+
   protected void ensureParentIsAttachedToTree(T parent) throws NodeNotInTree {
     if (!parent.hasTreeId()) {
       throw new NodeNotInTree(String.format("Parent node not attached to any tree: %s", parent));
     }
   }
 
-  @Override
-  public List<T> removeChild(T parent, T child) throws NodeNotInTree, NodeNotChildOfParent {
-    return null;
+  protected void ensureChildOfParent(T parent, T child) throws NodeNotChildOfParent, NodeNotInTree {
+    if (parent.getHead() <= child.getHead() && child.getTail() <= parent.getTail()) {
+      if (!child.getTreeId().equals(parent.getTreeId())) {
+        throw new NodeNotInTree(
+            String.format("Nodes not in same tree - parent: %s; child %s", parent, child));
+      }
+    } else {
+      throw new NodeNotChildOfParent(String.format("%s not parent of %s", parent, child));
+    }
+  }
+
+  protected void removeNode(T node) {
+    if (entityManager.contains(node)) {
+      entityManager.remove(node);
+    } else {
+      var attached = entityManager.find(entityClass, node);
+      entityManager.remove(attached);
+    }
   }
 
   @Override
@@ -163,16 +187,59 @@ public abstract class DyadicRepositoryImpl<T extends DyadicEntity> implements
 
   @Override
   public List<T> findSubTree(T node) {
-    return null;
+    var query = String.format(
+        "SELECT node" +
+            " FROM %s node" +
+            " WHERE node.treeId = :treeId" +
+            " AND :head <= node.head AND node.tail <= :tail",
+        entityClass.getSimpleName());
+    return entityManager.createQuery(query, entityClass)
+        .setParameter("treeId", node.getTreeId())
+        .setParameter("head", node.getHead())
+        .setParameter("tail", node.getTail())
+        .getResultList();
   }
 
   @Override
   public List<T> findAncestors(T node) {
-    return null;
+    var query = String.format(
+        "SELECT node" +
+            " FROM %s node" +
+            " WHERE node.treeId = :treeId" +
+            " AND node.head <= :head AND :tail <= node.tail" +
+            " AND node.depth < :depth" +
+            " ORDER BY node.depth ASC",
+        entityClass.getSimpleName());
+    return entityManager.createQuery(query, entityClass)
+        .setParameter("treeId", node.getTreeId())
+        .setParameter("head", node.getHead())
+        .setParameter("tail", node.getTail())
+        .setParameter("depth", node.getDepth())
+        .getResultList();
   }
 
   @Override
   public T findParent(T node) {
-    return null;
+    var query = String.format(
+        "SELECT node" +
+            " FROM %s node" +
+            " WHERE node.treeId = :treeId" +
+            " AND node.head <= :head AND :tail <= node.tail" +
+            " AND node.depth = :depth",
+        entityClass.getSimpleName());
+    return getSingleResultOrNull(
+        entityManager.createQuery(query, entityClass)
+            .setParameter("treeId", node.getTreeId())
+            .setParameter("head", node.getHead())
+            .setParameter("tail", node.getTail())
+            .setParameter("depth", node.getDepth() - 1));
+  }
+
+  protected T getSingleResultOrNull(TypedQuery<T> query) {
+    try {
+      return query.getSingleResult();
+    } catch (NoResultException e) {
+      return null;
+    }
   }
 }
