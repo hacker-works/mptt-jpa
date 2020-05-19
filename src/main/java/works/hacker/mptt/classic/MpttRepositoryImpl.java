@@ -6,6 +6,7 @@ import javax.persistence.PersistenceContext;
 import javax.persistence.TypedQuery;
 import javax.transaction.Transactional;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 
 @Transactional
@@ -256,7 +257,7 @@ public abstract class MpttRepositoryImpl<T extends MpttEntity> implements MpttRe
   }
 
   @Override
-  public T findParent(T node) {
+  public Optional<T> findParent(T node) {
     var query = String.format(
         "SELECT node" +
             " FROM %s node" +
@@ -264,11 +265,12 @@ public abstract class MpttRepositoryImpl<T extends MpttEntity> implements MpttRe
             " AND node.lft < :lft AND :rgt < node.rgt" +
             " ORDER BY node.lft DESC",
         entityClass.getSimpleName());
-    return getSingleResultOrNull(
-        entityManager.createQuery(query, entityClass)
-            .setParameter("treeId", node.getTreeId())
-            .setParameter("lft", node.getLft())
-            .setParameter("rgt", node.getRgt())
-            .setMaxResults(1));
+    return entityManager.createQuery(query, entityClass)
+        .setParameter("treeId", node.getTreeId())
+        .setParameter("lft", node.getLft())
+        .setParameter("rgt", node.getRgt())
+        .setMaxResults(1)
+        .getResultList().stream().findFirst();
   }
+
 }

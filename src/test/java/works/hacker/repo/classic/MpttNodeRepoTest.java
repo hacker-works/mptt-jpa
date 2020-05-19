@@ -22,9 +22,12 @@ import works.hacker.mptt.classic.MpttRepository;
 import javax.annotation.Resource;
 import javax.transaction.Transactional;
 
+import java.util.Optional;
+
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 
+@SuppressWarnings("OptionalGetWithoutIsPresent")
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(classes = {TreesJpaConfig.class}, loader = AnnotationConfigContextLoader.class)
 @Transactional
@@ -881,7 +884,7 @@ public class MpttNodeRepoTest {
     var root = new MpttNode("root");
     treeRepo.startTree(root);
 
-    assertThat(treeRepo.findParent(root), is(nullValue()));
+    assertThat(treeRepo.findParent(root), is(Optional.empty()));
   }
 
   @Test
@@ -893,8 +896,8 @@ public class MpttNodeRepoTest {
     var child = new MpttNode("child");
     treeRepo.addChild(root, child);
 
-    assertThat(treeRepo.findParent(root), is(nullValue()));
-    assertThat(treeRepo.findParent(child), is(root));
+    assertThat(treeRepo.findParent(root), is(Optional.empty()));
+    assertThat(treeRepo.findParent(child).get(), is(root));
   }
 
   @Test
@@ -909,9 +912,9 @@ public class MpttNodeRepoTest {
     var subChild = new MpttNode("subChild");
     treeRepo.addChild(child, subChild);
 
-    assertThat(treeRepo.findParent(root), is(nullValue()));
-    assertThat(treeRepo.findParent(child), is(root));
-    assertThat(treeRepo.findParent(subChild), is(child));
+    assertThat(treeRepo.findParent(root), is(Optional.empty()));
+    assertThat(treeRepo.findParent(child).get(), is(root));
+    assertThat(treeRepo.findParent(subChild).get(), is(child));
   }
 
   @Test
@@ -926,9 +929,9 @@ public class MpttNodeRepoTest {
     var child2 = new MpttNode("child-2");
     treeRepo.addChild(root, child2);
 
-    assertThat(treeRepo.findParent(root), is(nullValue()));
-    assertThat(treeRepo.findParent(child1), is(root));
-    assertThat(treeRepo.findParent(child2), is(root));
+    assertThat(treeRepo.findParent(root), is(Optional.empty()));
+    assertThat(treeRepo.findParent(child1).get(), is(root));
+    assertThat(treeRepo.findParent(child2).get(), is(root));
   }
 
   @Test
@@ -964,12 +967,12 @@ public class MpttNodeRepoTest {
         └── child-2 (id: %d) [treeId: 100 | lft: 10 | rgt: 13]
             └── lastSubChild (id: %d) [treeId: 100 | lft: 11 | rgt: 12]
     */
-    assertThat(treeRepo.findParent(root), is(nullValue()));
-    assertThat(treeRepo.findParent(child1), is(root));
-    assertThat(treeRepo.findParent(child2), is(root));
-    assertThat(treeRepo.findParent(subChild1), is(child1));
-    assertThat(treeRepo.findParent(subChild2), is(child1));
-    assertThat(treeRepo.findParent(subSubChild), is(subChild1));
-    assertThat(treeRepo.findParent(lastSubChild), is(child2));
+    assertThat(treeRepo.findParent(root), is(Optional.empty()));
+    assertThat(treeRepo.findParent(child1).get(), is(root));
+    assertThat(treeRepo.findParent(child2).get(), is(root));
+    assertThat(treeRepo.findParent(subChild1).get(), is(child1));
+    assertThat(treeRepo.findParent(subChild2).get(), is(child1));
+    assertThat(treeRepo.findParent(subSubChild).get(), is(subChild1));
+    assertThat(treeRepo.findParent(lastSubChild).get(), is(child2));
   }
 }

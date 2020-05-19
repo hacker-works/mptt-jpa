@@ -4,6 +4,7 @@ import works.hacker.mptt.classic.MpttEntity;
 
 import javax.persistence.NoResultException;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * JPA repository interface defining the operations of / on an MPTT tree.
@@ -194,9 +195,9 @@ public interface TreeRepository<T extends TreeEntity> {
    * When {@code tagTreeRepo.findParent(subChild1)}, should return {@code child1}.
    *
    * @param node must not be null; must be part of a tree
-   * @return the direct parent node; or null if the given node is a root node
+   * @return optional of the direct parent node; or empty optional if the given node is a root
    */
-  T findParent(T node);
+  Optional<T> findParent(T node);
 
   class NodeAlreadyAttachedToTree extends Exception {
     public NodeAlreadyAttachedToTree(String message) {

@@ -3,7 +3,6 @@ package works.hacker.mptt.dyadic;
 import javax.persistence.EntityManager;
 import javax.persistence.NoResultException;
 import javax.persistence.PersistenceContext;
-import javax.persistence.TypedQuery;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
@@ -152,20 +151,12 @@ public abstract class DyadicRepositoryImpl<T extends DyadicEntity> implements Dy
             ")",
         entityClass.getSimpleName(),
         entityClass.getSimpleName());
-    return toOptional(
-        entityManager.createQuery(query, entityClass)
-            .setParameter("treeId", parent.getTreeId())
-            .setParameter("head", parent.getHead())
-            .setParameter("tail", parent.getTail())
-            .setParameter("depth", parent.getDepth() + 1));
-  }
-
-  protected Optional<T> toOptional(TypedQuery<T> query) {
-    try {
-      return Optional.of(query.getSingleResult());
-    } catch (NoResultException e) {
-      return Optional.empty();
-    }
+    return entityManager.createQuery(query, entityClass)
+        .setParameter("treeId", parent.getTreeId())
+        .setParameter("head", parent.getHead())
+        .setParameter("tail", parent.getTail())
+        .setParameter("depth", parent.getDepth() + 1)
+        .getResultList().stream().findFirst();
   }
 
   @Override
@@ -219,7 +210,7 @@ public abstract class DyadicRepositoryImpl<T extends DyadicEntity> implements Dy
   }
 
   @Override
-  public T findParent(T node) {
+  public Optional<T> findParent(T node) {
     var query = String.format(
         "SELECT node" +
             " FROM %s node" +
@@ -227,19 +218,11 @@ public abstract class DyadicRepositoryImpl<T extends DyadicEntity> implements Dy
             " AND node.head <= :head AND :tail <= node.tail" +
             " AND node.depth = :depth",
         entityClass.getSimpleName());
-    return getSingleResultOrNull(
-        entityManager.createQuery(query, entityClass)
-            .setParameter("treeId", node.getTreeId())
-            .setParameter("head", node.getHead())
-            .setParameter("tail", node.getTail())
-            .setParameter("depth", node.getDepth() - 1));
-  }
-
-  protected T getSingleResultOrNull(TypedQuery<T> query) {
-    try {
-      return query.getSingleResult();
-    } catch (NoResultException e) {
-      return null;
-    }
+    return entityManager.createQuery(query, entityClass)
+        .setParameter("treeId", node.getTreeId())
+        .setParameter("head", node.getHead())
+        .setParameter("tail", node.getTail())
+        .setParameter("depth", node.getDepth() - 1)
+        .getResultList().stream().findFirst();
   }
 }
