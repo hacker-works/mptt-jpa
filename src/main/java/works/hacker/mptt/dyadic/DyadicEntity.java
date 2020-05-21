@@ -6,113 +6,102 @@ import javax.persistence.Column;
 import javax.persistence.MappedSuperclass;
 
 @MappedSuperclass
-public class DyadicEntity extends TreeEntity {
+public class DyadicEntity extends TreeEntity<Double> {
   public static final long START = 0;
   public static final long END = 1;
 
   @Column(nullable = false)
-  private long depth;
+  private long lftN;
 
   @Column(nullable = false)
-  private long headN;
+  private long lftD;
 
   @Column(nullable = false)
-  private long headD;
+  private long rgtN;
 
   @Column(nullable = false)
-  private long tailN;
-
-  @Column(nullable = false)
-  private long tailD;
-
-  @Column(nullable = false)
-  private double head;
-
-  @Column(nullable = false)
-  private double tail;
+  private long rgtD;
 
   public DyadicEntity() {
     super();
-    setNodeDefaults();
   }
 
-  public void setNodeDefaults() {
-    this.depth = START;
-
-    this.headN = START;
-    this.headD = END;
-
-    this.tailN = END;
-    this.tailD = END;
-
-    this.head = (double) headN / (double) headD;
-    this.tail = (double) tailN / (double) tailD;
-  }
-
-  private void updateHead() {
-    this.head = (double) headN / (double) headD;
-  }
-
-  private void updateTail() {
-    this.tail = (double) tailN / (double) tailD;
-  }
-
-  public long getDepth() {
-    return depth;
-  }
-
-  public void setDepth(long depth) {
-    this.depth = depth;
-  }
-
-  public long getHeadN() {
-    return headN;
-  }
-
-  public void setHeadN(long headN) {
-    this.headN = headN;
-    updateHead();
-  }
-
-  public long getHeadD() {
-    return headD;
-  }
-
-  public void setHeadD(long headD) {
-    if (headD == 0) throw new IllegalArgumentException("Will lead to division by zero");
-    this.headD = headD;
-    updateHead();
-  }
-
-  public long getTailN() {
-    return tailN;
-  }
-
-  public void setTailN(long tailN) {
-    this.tailN = tailN;
-    updateTail();
-  }
-
-  public long getTailD() {
-    return tailD;
-  }
-
-  public void setTailD(long tailD) {
-    if (tailD == 0) throw new IllegalArgumentException("Will lead to division by zero");
-    this.tailD = tailD;
-    updateTail();
-  }
-
-  public double getHead() {
-    return head;
-  }
-
-  public double getTail() {
-    return tail;
+  public DyadicEntity(String name) {
+    super(name);
   }
 
   @Override
-  public String toString() {
-    return String.format("[treeId: %d | lft: %d/%d | rgt: %d/%d]", treeId, headN, headD, tailN, tailD);
+  public void setDefaults() {
+    super.setDefaults();
+
+    this.lftN = START;
+    this.lftD = END;
+
+    this.rgtN = END;
+    this.rgtD = END;
+
+    this.lft = (double) lftN / (double) lftD;
+    this.rgt = (double) rgtN / (double) rgtD;
+  }
+
+  @Override
+  public Double getStartLft() {
+    return (double) START;
+  }
+
+  @Override
+  public Double getStartRgt() {
+    return (double) END;
+  }
+
+  private void updateHead() {
+    this.lft = (double) lftN / (double) lftD;
+  }
+
+  private void updateTail() {
+    this.rgt = (double) rgtN / (double) rgtD;
+  }
+
+  public long getLftN() {
+    return lftN;
+  }
+
+  public void setLftN(long lftN) {
+    this.lftN = lftN;
+    updateHead();
+  }
+
+  public long getLftD() {
+    return lftD;
+  }
+
+  public void setLftD(long lftD) {
+    if (lftD == 0) throw new IllegalArgumentException("Will lead to division by zero");
+    this.lftD = lftD;
+    updateHead();
+  }
+
+  public long getRgtN() {
+    return rgtN;
+  }
+
+  public void setRgtN(long rgtN) {
+    this.rgtN = rgtN;
+    updateTail();
+  }
+
+  public long getRgtD() {
+    return rgtD;
+  }
+
+  public void setRgtD(long rgtD) {
+    if (rgtD == 0) throw new IllegalArgumentException("Will lead to division by zero");
+    this.rgtD = rgtD;
+    updateTail();
+  }
+
+  @Override
+  protected String toNodeString() {
+    return String.format("[treeId: %d | lft: %d/%d | rgt: %d/%d]", treeId, lftN, lftD, rgtN, rgtD);
   }
 }

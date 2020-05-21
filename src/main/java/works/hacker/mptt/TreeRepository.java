@@ -3,6 +3,7 @@ package works.hacker.mptt;
 import works.hacker.mptt.classic.MpttEntity;
 
 import javax.persistence.NoResultException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import java.util.Optional;
 
@@ -48,6 +49,9 @@ public interface TreeRepository<T extends TreeEntity> {
    * @param entityClass the class type of the entity extending {@link MpttEntity}
    */
   void setEntityClass(Class<T> entityClass);
+
+  T createNode(String name) throws IllegalAccessException, InstantiationException, NoSuchMethodException,
+      InvocationTargetException;
 
   /**
    * Starts a new tree.

@@ -79,14 +79,14 @@ public class DyadicNodeRepoTest {
 
     assertThat(actual.getDepth(), is(DyadicEntity.START));
 
-    assertThat(actual.getHeadN(), is(DyadicEntity.START));
-    assertThat(actual.getHeadD(), is(DyadicEntity.END));
+    assertThat(actual.getLftN(), is(DyadicEntity.START));
+    assertThat(actual.getLftD(), is(DyadicEntity.END));
 
-    assertThat(actual.getTailN(), is(DyadicEntity.END));
-    assertThat(actual.getTailD(), is(DyadicEntity.END));
+    assertThat(actual.getRgtN(), is(DyadicEntity.END));
+    assertThat(actual.getRgtD(), is(DyadicEntity.END));
 
-    assertThat(actual.getHead(), is(0.0));
-    assertThat(actual.getTail(), is(1.0));
+    assertThat(actual.getLft(), is(0.0));
+    assertThat(actual.getRgt(), is(1.0));
   }
 
   @Test
@@ -160,11 +160,11 @@ public class DyadicNodeRepoTest {
     var actualRoot = treeRepo.findByName("root");
     var actualChild = treeRepo.findByName("child");
 
-    assertThat(actualRoot.getHead(), is(0.0));
-    assertThat(actualRoot.getTail(), is(1.0));
+    assertThat(actualRoot.getLft(), is(0.0));
+    assertThat(actualRoot.getRgt(), is(1.0));
     assertThat(actualChild.getTreeId(), is(root.getTreeId()));
-    assertThat(actualChild.getHead(), is(root.getHead()));
-    assertThat(actualChild.getTail(), is((root.getHead() + root.getTail()) / 2));
+    assertThat(actualChild.getLft(), is(root.getLft()));
+    assertThat(actualChild.getRgt(), is((root.getLft() + root.getRgt()) / 2));
 
     var youngestChild = treeRepo.findYoungestChild(actualRoot);
     assertThat(youngestChild.get(), is(child));

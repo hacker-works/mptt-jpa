@@ -3,6 +3,7 @@ package works.hacker.mptt.dyadic;
 import javax.persistence.EntityManager;
 import javax.persistence.NoResultException;
 import javax.persistence.PersistenceContext;
+import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
@@ -19,12 +20,19 @@ public abstract class DyadicRepositoryImpl<T extends DyadicEntity> implements Dy
   }
 
   @Override
+  public T createNode(String name)
+      throws NoSuchMethodException, IllegalAccessException, InvocationTargetException,
+      InstantiationException {
+    return entityClass.getDeclaredConstructor(String.class).newInstance(name);
+  }
+
+  @Override
   public Long startTree(T node) throws NodeAlreadyAttachedToTree {
     ensureNodeIsNotAttachedToAnyTree(node);
 
     var treeId = generateTreeId();
+    node.setDefaults();
     node.setTreeId(treeId);
-    node.setNodeDefaults();
 
     entityManager.persist(node);
     return treeId;
@@ -58,7 +66,7 @@ public abstract class DyadicRepositoryImpl<T extends DyadicEntity> implements Dy
     var query = String.format(
         "SELECT node FROM %s node" +
             " WHERE node.treeId = :treeId" +
-            " AND node.head = 0 AND node.tail = 1",
+            " AND node.lft = 0 AND node.rgt = 1",
         entityClass.getSimpleName());
     return entityManager.createQuery(query, entityClass)
         .setParameter("treeId", treeId)
@@ -83,19 +91,19 @@ public abstract class DyadicRepositoryImpl<T extends DyadicEntity> implements Dy
   protected void addFirstChild(T parent, T child) {
     child.setTreeId(parent.getTreeId());
     child.setDepth(parent.getDepth() + 1);
-    child.setHeadN(parent.getHeadN());
-    child.setHeadD(parent.getHeadD());
-    child.setTailN(2 * parent.getHeadN() + parent.getTailN());
-    child.setTailD(2 * parent.getTailD());
+    child.setLftN(parent.getLftN());
+    child.setLftD(parent.getLftD());
+    child.setRgtN(2 * parent.getLftN() + parent.getRgtN());
+    child.setRgtD(2 * parent.getRgtD());
   }
 
   protected void addNextChild(T sibling, T child) {
     child.setTreeId(sibling.getTreeId());
     child.setDepth(sibling.getDepth());
-    child.setHeadN(sibling.getTailN());
-    child.setHeadD(sibling.getTailD());
-    child.setTailN(2 * sibling.getTailN() + 1);
-    child.setTailD(2 * sibling.getTailD());
+    child.setLftN(sibling.getRgtN());
+    child.setLftD(sibling.getRgtD());
+    child.setRgtN(2 * sibling.getRgtN() + 1);
+    child.setRgtD(2 * sibling.getRgtD());
   }
 
   @Override
@@ -115,8 +123,8 @@ public abstract class DyadicRepositoryImpl<T extends DyadicEntity> implements Dy
   }
 
   protected void ensureChildOfParent(T parent, T child) throws NodeNotChildOfParent, NodeNotInTree {
-    if (parent.getHead() <= child.getHead() && child.getTail() <= parent.getTail()) {
-      if (!child.getTreeId().equals(parent.getTreeId())) {
+    if (parent.getLft() <= child.getLft() && child.getRgt() <= parent.getRgt()) {
+      if (child.getTreeId() != parent.getTreeId()) {
         throw new NodeNotInTree(
             String.format("Nodes not in same tree - parent: %s; child %s", parent, child));
       }
@@ -140,21 +148,21 @@ public abstract class DyadicRepositoryImpl<T extends DyadicEntity> implements Dy
         "SELECT youngest FROM %s youngest" +
             " WHERE youngest.treeId = :treeId" +
             " AND youngest.depth = :depth" +
-            " AND :head <= youngest.head" +
-            " AND youngest.tail <= :tail" +
-            " AND youngest.tailD = (" +
-            "SELECT MAX(node.tailD) FROM %s node" +
+            " AND :lft <= youngest.lft" +
+            " AND youngest.rgt <= :rgt" +
+            " AND youngest.rgtD = (" +
+            "SELECT MAX(node.rgtD) FROM %s node" +
             " WHERE node.treeId = :treeId" +
             " AND node.depth = :depth" +
-            " AND :head <= node.head" +
-            " AND node.tail <= :tail" +
+            " AND :lft <= node.lft" +
+            " AND node.rgt <= :rgt" +
             ")",
         entityClass.getSimpleName(),
         entityClass.getSimpleName());
     return entityManager.createQuery(query, entityClass)
         .setParameter("treeId", parent.getTreeId())
-        .setParameter("head", parent.getHead())
-        .setParameter("tail", parent.getTail())
+        .setParameter("lft", parent.getLft())
+        .setParameter("rgt", parent.getRgt())
         .setParameter("depth", parent.getDepth() + 1)
         .getResultList().stream().findFirst();
   }
@@ -165,13 +173,13 @@ public abstract class DyadicRepositoryImpl<T extends DyadicEntity> implements Dy
         "SELECT child" +
             " FROM %s child" +
             " WHERE child.treeId = :treeId" +
-            " AND :head <= child.head AND child.tail <= :tail" +
+            " AND :lft <= child.lft AND child.rgt <= :rgt" +
             " AND child.depth = :depth",
         entityClass.getSimpleName());
     return entityManager.createQuery(query, entityClass)
         .setParameter("treeId", node.getTreeId())
-        .setParameter("head", node.getHead())
-        .setParameter("tail", node.getTail())
+        .setParameter("lft", node.getLft())
+        .setParameter("rgt", node.getRgt())
         .setParameter("depth", node.getDepth() + 1)
         .getResultList();
   }
@@ -182,12 +190,12 @@ public abstract class DyadicRepositoryImpl<T extends DyadicEntity> implements Dy
         "SELECT node" +
             " FROM %s node" +
             " WHERE node.treeId = :treeId" +
-            " AND :head <= node.head AND node.tail <= :tail",
+            " AND :lft <= node.lft AND node.rgt <= :rgt",
         entityClass.getSimpleName());
     return entityManager.createQuery(query, entityClass)
         .setParameter("treeId", node.getTreeId())
-        .setParameter("head", node.getHead())
-        .setParameter("tail", node.getTail())
+        .setParameter("lft", node.getLft())
+        .setParameter("rgt", node.getRgt())
         .getResultList();
   }
 
@@ -197,14 +205,14 @@ public abstract class DyadicRepositoryImpl<T extends DyadicEntity> implements Dy
         "SELECT node" +
             " FROM %s node" +
             " WHERE node.treeId = :treeId" +
-            " AND node.head <= :head AND :tail <= node.tail" +
+            " AND node.lft <= :lft AND :rgt <= node.rgt" +
             " AND node.depth < :depth" +
             " ORDER BY node.depth ASC",
         entityClass.getSimpleName());
     return entityManager.createQuery(query, entityClass)
         .setParameter("treeId", node.getTreeId())
-        .setParameter("head", node.getHead())
-        .setParameter("tail", node.getTail())
+        .setParameter("lft", node.getLft())
+        .setParameter("rgt", node.getRgt())
         .setParameter("depth", node.getDepth())
         .getResultList();
   }
@@ -215,13 +223,13 @@ public abstract class DyadicRepositoryImpl<T extends DyadicEntity> implements Dy
         "SELECT node" +
             " FROM %s node" +
             " WHERE node.treeId = :treeId" +
-            " AND node.head <= :head AND :tail <= node.tail" +
+            " AND node.lft <= :lft AND :rgt <= node.rgt" +
             " AND node.depth = :depth",
         entityClass.getSimpleName());
     return entityManager.createQuery(query, entityClass)
         .setParameter("treeId", node.getTreeId())
-        .setParameter("head", node.getHead())
-        .setParameter("tail", node.getTail())
+        .setParameter("lft", node.getLft())
+        .setParameter("rgt", node.getRgt())
         .setParameter("depth", node.getDepth() - 1)
         .getResultList().stream().findFirst();
   }

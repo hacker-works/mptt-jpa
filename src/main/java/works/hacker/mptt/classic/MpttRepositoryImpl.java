@@ -5,6 +5,7 @@ import javax.persistence.NoResultException;
 import javax.persistence.PersistenceContext;
 import javax.persistence.TypedQuery;
 import javax.transaction.Transactional;
+import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
@@ -19,6 +20,13 @@ public abstract class MpttRepositoryImpl<T extends MpttEntity> implements MpttRe
   @Override
   public void setEntityClass(Class<T> entityClass) {
     this.entityClass = entityClass;
+  }
+
+  @Override
+  public T createNode(String name)
+      throws NoSuchMethodException, IllegalAccessException, InvocationTargetException,
+      InstantiationException {
+    return entityClass.getDeclaredConstructor(String.class).newInstance(name);
   }
 
   @Override
@@ -128,7 +136,7 @@ public abstract class MpttRepositoryImpl<T extends MpttEntity> implements MpttRe
 
   protected void ensureChildOfParent(T parent, T child) throws NodeNotChildOfParent, NodeNotInTree {
     if (parent.getLft() < child.getLft() && child.getRgt() < parent.getRgt()) {
-      if (!child.getTreeId().equals(parent.getTreeId())) {
+      if (child.getTreeId() != parent.getTreeId()) {
         throw new NodeNotInTree(
             String.format("Nodes not in same tree - parent: %s; child %s", parent, child));
       }
