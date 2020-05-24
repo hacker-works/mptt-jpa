@@ -68,15 +68,14 @@ public class MpttNodeRepoTest {
   }
 
   @Test
-  public void givenNoTree_whenStartTree_thenOK() throws TreeRepository.NodeAlreadyAttachedToTree {
-    var root = new MpttNode("root");
-    var treeId = treeRepo.startTree(root);
+  public void givenNoTree_whenStartTree_thenOK() {
+    var tree = new TreeWithNoChildren<>(treeRepo, utils);
 
     assertThat(treeRepo.count(), is(1L));
 
-    var actual = treeRepo.findByName(root.getName());
+    var actual = treeRepo.findByName(tree.root.getName());
     assertThat(actual.getTreeId(), not(TreeEntity.NO_TREE_ID));
-    assertThat(actual.getTreeId(), is(treeId));
+    assertThat(actual.getTreeId(), is(tree.getTreeId()));
 
     assertThat(actual.getLft(), is(actual.getStartLft()));
     assertThat(actual.getRgt(), is(actual.getStartRgt()));
@@ -85,21 +84,19 @@ public class MpttNodeRepoTest {
   @Test
   public void givenTree_whenStartTreeWithUsedRootNode_thenError()
       throws TreeRepository.NodeAlreadyAttachedToTree {
-    var treeId = treeRepo.startTree(new MpttNode("root"));
+    var tree = new TreeWithNoChildren<>(treeRepo, utils);
 
     exceptionRule.expect(MpttRepository.NodeAlreadyAttachedToTree.class);
-    exceptionRule.expectMessage(String.format("Node already has treeId set to %d", treeId));
-    var root = treeRepo.findByName("root");
+    exceptionRule.expectMessage(String.format("Node already has treeId set to %d", tree.getTreeId()));
+    var root = treeRepo.findByName(tree.root.getName());
     treeRepo.startTree(root);
   }
 
   @Test
-  public void givenTree_whenFindTreeRoot_thenOK() throws TreeRepository.NodeAlreadyAttachedToTree {
-    var root = new MpttNode("root");
-    var treeId = treeRepo.startTree(root);
-
-    var actual = treeRepo.findTreeRoot(treeId);
-    assertThat(actual, is(root));
+  public void givenTree_whenFindTreeRoot_thenOK() {
+    var tree = new TreeWithNoChildren<>(treeRepo, utils);
+    var actual = treeRepo.findTreeRoot(tree.getTreeId());
+    assertThat(actual, is(tree.root));
   }
 
   @Test
@@ -159,18 +156,9 @@ public class MpttNodeRepoTest {
   }
 
   @Test
-  public void givenTreeRoot_whenPrintTree_thenOK() throws TreeRepository.NodeAlreadyAttachedToTree {
-    var root = new MpttNode("root");
-    treeRepo.startTree(root);
-
-    // @formatter:off
-    var expected = String.format(
-        ".\n" +
-        "└── root (id: %d) [treeId: %d | lft: 1 | rgt: 2]",
-        root.getId(), root.getTreeId());
-    // @formatter:on
-    var actual = utils.printTree(root);
-    assertThat(actual, is(expected));
+  public void givenTreeWithoutChildren_whenPrintTree_thenOK() {
+    var tree = new TreeWithNoChildren<>(treeRepo, utils);
+    assertThat(utils.printTree(tree.root), is(tree.getExpected()));
   }
 
   @Test
@@ -204,7 +192,6 @@ public class MpttNodeRepoTest {
   @Test
   public void givenTreeWithChildAndSubChild_whenFindChildren_thenContainsOneChild() {
     var tree = new TreeWithChildAndSubChild<>(treeRepo, utils);
-
     var actual = treeRepo.findChildren(tree.root);
     assertThat(actual.size(), is(1));
     assertThat(actual, containsInRelativeOrder(tree.child1));
@@ -259,6 +246,7 @@ public class MpttNodeRepoTest {
   @Test
   public void givenComplexTree3_whenPrintTree_thenOK() {
     var tree = new ComplexTree3<>(treeRepo, utils);
+
     var actual = utils.printTree(tree.root);
     assertThat(actual, is(tree.getExpected()));
 
@@ -292,36 +280,24 @@ public class MpttNodeRepoTest {
 
   @Test
   public void givenParentAndChildInDifferentTrees_whenRemoveChild_thenError()
-      throws TreeRepository.NodeAlreadyAttachedToTree, TreeRepository.NodeNotInTree,
-      TreeRepository.NodeNotChildOfParent {
-    var parent1 = new MpttNode("parent-1");
-    treeRepo.startTree(parent1);
-    var child1 = new MpttNode("child-1");
-    treeRepo.addChild(parent1, child1);
-
-    var parent2 = new MpttNode("parent-2");
-    treeRepo.startTree(parent2);
-    var child2 = new MpttNode("child-2");
-    treeRepo.addChild(parent2, child2);
+      throws TreeRepository.NodeNotInTree, TreeRepository.NodeNotChildOfParent {
+    var tree1 = new TreeWithOneChild<>(treeRepo, utils);
+    var tree2 = new TreeWithOneChild<>(treeRepo, utils);
 
     exceptionRule.expect(MpttRepository.NodeNotInTree.class);
     exceptionRule
-        .expectMessage(String.format("Nodes not in same tree - parent: %s; child %s", parent1, child2));
-    treeRepo.removeChild(parent1, child2);
+        .expectMessage(
+            String.format("Nodes not in same tree - parent: %s; child %s", tree1.root, tree2.child1));
+    treeRepo.removeChild(tree1.root, tree2.child1);
   }
 
   @Test
   public void givenParentAndChild_whenRemoveChildReverseParentAndChild_thenError()
-      throws TreeRepository.NodeAlreadyAttachedToTree, TreeRepository.NodeNotInTree,
-      TreeRepository.NodeNotChildOfParent {
-    var parent = new MpttNode("parent");
-    treeRepo.startTree(parent);
-
-    var child = new MpttNode("child");
-    treeRepo.addChild(parent, child);
+      throws TreeRepository.NodeNotInTree, TreeRepository.NodeNotChildOfParent {
+    var tree = new TreeWithOneChild<>(treeRepo, utils);
 
     exceptionRule.expect(MpttRepository.NodeNotChildOfParent.class);
-    treeRepo.removeChild(child, parent);
+    treeRepo.removeChild(tree.child1, tree.root);
   }
 
   @Test
@@ -455,19 +431,15 @@ public class MpttNodeRepoTest {
   }
 
   @Test
-  public void givenRoot_whenFindAncestorsOfRoot_thenEmptyList()
-      throws TreeRepository.NodeAlreadyAttachedToTree {
-    var root = new MpttNode("root");
-    treeRepo.startTree(root);
-
-    var actual = treeRepo.findAncestors(root);
+  public void givenRoot_whenFindAncestorsOfRoot_thenEmptyList() {
+    var tree = new TreeWithNoChildren<>(treeRepo, utils);
+    var actual = treeRepo.findAncestors(tree.root);
     assertThat(actual, is(empty()));
   }
 
   @Test
   public void givenTreeWithOneChild_whenFindAncestorsOfChild_thenListOfRoot() {
     var tree = new TreeWithOneChild<>(treeRepo, utils);
-
     var actual = treeRepo.findAncestors(tree.child1);
     assertThat(actual.size(), is(1));
     assertThat(actual, contains(tree.root));
@@ -541,16 +513,15 @@ public class MpttNodeRepoTest {
   }
 
   @SuppressWarnings("rawtypes")
-  static class TreeWithOneChild<T extends TreeEntity> {
+  static class TreeWithNoChildren<T extends TreeEntity> {
     public T root;
-    public T child1;
 
     protected Long treeId;
 
     protected final TreeRepository<T> repo;
     protected final TreeUtils<T> utils;
 
-    public TreeWithOneChild(TreeRepository<T> repo, TreeUtils<T> utils) {
+    public TreeWithNoChildren(TreeRepository<T> repo, TreeUtils<T> utils) {
       this.repo = repo;
       this.utils = utils;
 
@@ -562,20 +533,46 @@ public class MpttNodeRepoTest {
     }
 
     protected void setupTree()
-        throws TreeRepository.NodeAlreadyAttachedToTree, TreeRepository.NodeNotInTree,
-        InvocationTargetException, NoSuchMethodException, InstantiationException,
-        IllegalAccessException {
+        throws TreeRepository.NodeAlreadyAttachedToTree, InvocationTargetException,
+        NoSuchMethodException, InstantiationException, IllegalAccessException,
+        TreeRepository.NodeNotInTree {
       root = repo.createNode("root");
-      child1 = repo.createNode("child-1");
 
       this.treeId = repo.startTree(root);
-      repo.addChild(root, child1);
     }
 
     public Long getTreeId() {
       return treeId;
     }
 
+    public String getExpected() {
+      // @formatter:off
+      return String.format(
+          ".\n" +
+          "└── root (id: %d) [treeId: %d | lft: 1 | rgt: 2]",
+          root.getId(), root.getTreeId());
+      // @formatter:on
+    }
+  }
+
+  @SuppressWarnings("rawtypes")
+  static class TreeWithOneChild<T extends TreeEntity> extends TreeWithNoChildren<T> {
+    public T child1;
+
+    public TreeWithOneChild(TreeRepository<T> repo, TreeUtils<T> utils) {
+      super(repo, utils);
+    }
+
+    protected void setupTree()
+        throws TreeRepository.NodeAlreadyAttachedToTree, TreeRepository.NodeNotInTree,
+        InvocationTargetException, NoSuchMethodException, InstantiationException,
+        IllegalAccessException {
+      super.setupTree();
+      child1 = repo.createNode("child-1");
+      repo.addChild(root, child1);
+    }
+
+    @Override
     public String getExpected() {
       // @formatter:off
       return String.format(
