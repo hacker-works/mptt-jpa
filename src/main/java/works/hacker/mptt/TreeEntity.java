@@ -16,6 +16,7 @@ import java.util.Objects;
  * <p>
  * Modelling such data structure of nested sets in SQL is done by using the following properties:
  * <ul>
+ * <li><b>id</b> generated numeric id of the entity/li>
  * <li><b>lft</b> and <b>rgt</b> to represent the nesting of the nodes</li>
  * <li><b>depth</b></li> to indicate the generation of the children
  * <li><b>treeId</b> to allow growing multiple trees / hierarchies and discriminate between trees</li>

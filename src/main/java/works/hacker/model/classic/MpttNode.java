@@ -32,6 +32,4 @@ public class MpttNode extends MpttEntity {
   public MpttNode(String name) {
     super(name);
   }
-
-
 }

@@ -15,6 +15,8 @@ public class TreeUtils<T extends TreeEntity> {
 
   /**
    * Prints a string representation of the tree / sub-tree of a given node.
+   * <p>
+   * Very useful for tests when comparing whole trees.
    *
    * @param node must not be null; must be part of a tree
    * @return the string representation of the tree / sub-tree
@@ -57,7 +59,7 @@ public class TreeUtils<T extends TreeEntity> {
     return String.format(
         // @formatter:off
         ".\n" +
-            "└── %s",
+        "└── %s",
         // @formatter:on
         node.toString());
   }

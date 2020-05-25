@@ -21,7 +21,7 @@ public interface MpttRepository<T extends MpttEntity> extends TreeRepository<T> 
    *     └── child2 [lft: 10 | rgt: 13]
    *         └── lastSubChild [lft: 11 | rgt: 12]
    * </pre>
-   * When {@code tagTreeRepo.findRightMostChild(child1)}, then the right most child is
+   * When {@code repo.findRightMostChild(child1)}, then the right most child is
    * {@code subChild-2 [lft: 7 | rgt: 8]}
    * <p>
    * When {@code tagTreeRepo.findRightMostChild(root)}, then the right most child is

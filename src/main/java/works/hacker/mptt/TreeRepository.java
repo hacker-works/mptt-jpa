@@ -14,6 +14,7 @@ import java.util.Optional;
  *
  * @see works.hacker.mptt.classic.MpttRepository
  */
+@SuppressWarnings("rawtypes")
 public interface TreeRepository<T extends TreeEntity> {
   /**
    * Sets the class of the entity.

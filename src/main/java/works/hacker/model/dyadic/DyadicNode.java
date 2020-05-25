@@ -1,5 +1,7 @@
 package works.hacker.model.dyadic;
 
+import works.hacker.mptt.TreeEntity;
+import works.hacker.mptt.TreeRepository;
 import works.hacker.mptt.dyadic.DyadicEntity;
 import works.hacker.repo.dyadic.DyadicNodeRepository;
 import works.hacker.repo.dyadic.DyadicNodeRepositoryCustom;
@@ -17,6 +19,8 @@ import javax.persistence.MappedSuperclass;
  * @see DyadicNodeRepositoryCustom
  * @see DyadicNodeRepositoryImpl
  * @see DyadicNodeRepository
+ * @see TreeEntity
+ * @see TreeRepository
  * @see <a href="https://github.com/hacker-works/mptt-jpa">README</a>
  */
 @Entity
