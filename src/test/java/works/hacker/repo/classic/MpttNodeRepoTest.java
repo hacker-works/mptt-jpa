@@ -75,7 +75,7 @@ public class MpttNodeRepoTest {
 
     var actual = treeRepo.findByName(tree.root.getName());
     assertThat(actual.getTreeId(), not(TreeEntity.NO_TREE_ID));
-    assertThat(actual.getTreeId(), is(tree.getTreeId()));
+    assertThat(actual.getTreeId(), is(tree.treeId));
 
     assertThat(actual.getLft(), is(actual.getStartLft()));
     assertThat(actual.getRgt(), is(actual.getStartRgt()));
@@ -87,7 +87,7 @@ public class MpttNodeRepoTest {
     var tree = new TreeWithNoChildren<>(treeRepo, utils);
 
     exceptionRule.expect(MpttRepository.NodeAlreadyAttachedToTree.class);
-    exceptionRule.expectMessage(String.format("Node already has treeId set to %d", tree.getTreeId()));
+    exceptionRule.expectMessage(String.format("Node already has treeId set to %d", tree.treeId));
     var root = treeRepo.findByName(tree.root.getName());
     treeRepo.startTree(root);
   }
@@ -95,7 +95,7 @@ public class MpttNodeRepoTest {
   @Test
   public void givenTree_whenFindTreeRoot_thenOK() {
     var tree = new TreeWithNoChildren<>(treeRepo, utils);
-    var actual = treeRepo.findTreeRoot(tree.getTreeId());
+    var actual = treeRepo.findTreeRoot(tree.treeId);
     assertThat(actual, is(tree.root));
   }
 
@@ -426,7 +426,7 @@ public class MpttNodeRepoTest {
 
     LOG.debug(String.format("tree to search for root:\n%s", utils.printTree(tree.root)));
 
-    var actual = treeRepo.findTreeRoot(tree.getTreeId());
+    var actual = treeRepo.findTreeRoot(tree.treeId);
     assertThat(actual, is(tree.root));
   }
 
@@ -539,10 +539,6 @@ public class MpttNodeRepoTest {
       root = repo.createNode("root");
 
       this.treeId = repo.startTree(root);
-    }
-
-    public Long getTreeId() {
-      return treeId;
     }
 
     public String getExpected() {

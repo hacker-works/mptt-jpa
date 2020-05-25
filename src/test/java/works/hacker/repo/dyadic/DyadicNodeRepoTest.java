@@ -21,11 +21,13 @@ import works.hacker.mptt.dyadic.DyadicEntity;
 
 import javax.annotation.Resource;
 import javax.transaction.Transactional;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Optional;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 
+@SuppressWarnings("ALL")
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(classes = {TreesJpaConfig.class}, loader = AnnotationConfigContextLoader.class)
 @Transactional
@@ -67,15 +69,17 @@ public class DyadicNodeRepoTest {
   }
 
   @Test
-  public void givenNoTree_whenStartTree_thenOK() throws TreeRepository.NodeAlreadyAttachedToTree {
-    var root = new DyadicNode("root");
-    var treeId = treeRepo.startTree(root);
+  public void givenNoTree_whenStartTree_thenOK() {
+    var tree = new TreeWithNoChildren<>(treeRepo, utils);
 
     assertThat(treeRepo.count(), is(1L));
 
-    var actual = treeRepo.findByName(root.getName());
+    var actual = treeRepo.findByName(tree.root.getName());
     assertThat(actual.getTreeId(), not(TreeEntity.NO_TREE_ID));
-    assertThat(actual.getTreeId(), is(treeId));
+    assertThat(actual.getTreeId(), is(tree.treeId));
+
+    assertThat(actual.getLft(), is(actual.getStartLft()));
+    assertThat(actual.getRgt(), is(actual.getStartRgt()));
 
     assertThat(actual.getDepth(), is(DyadicEntity.START));
 
@@ -92,21 +96,19 @@ public class DyadicNodeRepoTest {
   @Test
   public void givenTree_whenStartTreeWithUsedRootNode_thenError()
       throws TreeRepository.NodeAlreadyAttachedToTree {
-    var treeId = treeRepo.startTree(new DyadicNode("root"));
+    var tree = new TreeWithNoChildren<>(treeRepo, utils);
 
     exceptionRule.expect(MpttRepository.NodeAlreadyAttachedToTree.class);
-    exceptionRule.expectMessage(String.format("Node already has treeId set to %d", treeId));
-    var root = treeRepo.findByName("root");
+    exceptionRule.expectMessage(String.format("Node already has treeId set to %d", tree.treeId));
+    var root = treeRepo.findByName(tree.root.getName());
     treeRepo.startTree(root);
   }
 
   @Test
-  public void givenTree_whenFindTreeRoot_thenOK() throws TreeRepository.NodeAlreadyAttachedToTree {
-    var root = new DyadicNode("root");
-    var treeId = treeRepo.startTree(root);
-
-    var actual = treeRepo.findTreeRoot(treeId);
-    assertThat(actual, is(root));
+  public void givenTree_whenFindTreeRoot_thenOK() {
+    var tree = new TreeWithNoChildren<>(treeRepo, utils);
+    var actual = treeRepo.findTreeRoot(tree.treeId);
+    assertThat(actual, is(tree.root));
   }
 
   @Test
@@ -171,319 +173,115 @@ public class DyadicNodeRepoTest {
   }
 
   @Test
-  public void givenTreeRoot_whenPrintTree_thenOK() throws TreeRepository.NodeAlreadyAttachedToTree {
-    var root = new DyadicNode("root");
-    treeRepo.startTree(root);
-
-    // @formatter:off
-    var expected = String.format(
-        ".\n" +
-        "└── root (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/1]",
-        root.getId(), root.getTreeId());
-    // @formatter:on
-    var actual = utils.printTree(root);
-    assertThat(actual, is(expected));
+  public void givenTreeWithoutChildren_whenPrintTree_thenOK() {
+    var tree = new TreeWithNoChildren<>(treeRepo, utils);
+    assertThat(utils.printTree(tree.root), is(tree.getExpected()));
   }
 
   @Test
-  public void givenTreeWithOneChild_whenFindChildren_thenContainsOneChild()
-      throws TreeRepository.NodeNotInTree, TreeRepository.NodeAlreadyAttachedToTree {
-    var root = new DyadicNode("root");
-    treeRepo.startTree(root);
-
-    var child = new DyadicNode("child");
-    treeRepo.addChild(root, child);
-
-    var actual = treeRepo.findChildren(root);
-    assertThat(actual, containsInRelativeOrder(child));
+  public void givenTreeWithOneChild_whenFindChildren_thenContainsOneChild() {
+    var tree = new TreeWithOneChild<>(treeRepo, utils);
+    var actual = treeRepo.findChildren(tree.root);
+    assertThat(actual, containsInRelativeOrder(tree.child1));
   }
 
   @Test
-  public void givenTreeWithChild_whenPrintTree_thenOK()
-      throws TreeRepository.NodeAlreadyAttachedToTree, TreeRepository.NodeNotInTree {
-    var root = new DyadicNode("root");
-    treeRepo.startTree(root);
-
-    var child = new DyadicNode("child");
-    treeRepo.addChild(root, child);
-
-    // @formatter:off
-    var expected = String.format(
-        ".\n" +
-        "└── root (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/1]\n"+
-        "    └── child (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/2]",
-        root.getId(), root.getTreeId(),
-        child.getId(), child.getTreeId());
-    // @formatter:on
-    var actual = utils.printTree(root);
-    assertThat(actual, is(expected));
+  public void givenTreeWithChild_whenPrintTree_thenOK() {
+    var tree = new TreeWithOneChild<>(treeRepo, utils);
+    var actual = utils.printTree(tree.root);
+    assertThat(actual, is(tree.getExpected()));
   }
 
   @Test
-  public void givenTreeWithTwoChildren_whenFindChildren_thenContainsTwoChildren()
-      throws TreeRepository.NodeNotInTree, TreeRepository.NodeAlreadyAttachedToTree {
-    var root = new DyadicNode("root");
-    treeRepo.startTree(root);
-
-    var child1 = new DyadicNode("child-1");
-    treeRepo.addChild(root, child1);
-
-    var child2 = new DyadicNode("child-2");
-    treeRepo.addChild(root, child2);
-
-    var actual = treeRepo.findChildren(root);
-    assertThat(actual, containsInRelativeOrder(child1, child2));
+  public void givenTreeWithTwoChildren_whenFindChildren_thenContainsTwoChildren() {
+    var tree = new TreeWithTwoChildren<>(treeRepo, utils);
+    var actual = treeRepo.findChildren(tree.root);
+    assertThat(actual, containsInRelativeOrder(tree.child1, tree.child2));
   }
 
   @Test
-  public void givenTreeWithTwoChildren_whenPrintTree_thenOK()
-      throws TreeRepository.NodeAlreadyAttachedToTree, TreeRepository.NodeNotInTree {
-    var root = new DyadicNode("root");
-    treeRepo.startTree(root);
-
-    var child1 = new DyadicNode("child-1");
-    treeRepo.addChild(root, child1);
-
-    var child2 = new DyadicNode("child-2");
-    treeRepo.addChild(root, child2);
-
-    // @formatter:off
-    var expected = String.format(
-        ".\n" +
-        "└── root (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/1]\n" +
-        "    ├── child-1 (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/2]\n" +
-        "    └── child-2 (id: %d) [treeId: %d | lft: 1/2 | rgt: 3/4]",
-        root.getId(), root.getTreeId(),
-        child1.getId(), child1.getTreeId(),
-        child2.getId(), child2.getTreeId());
-    // @formatter:on
-    var actual = utils.printTree(root);
-    assertThat(actual, is(expected));
+  public void givenTreeWithTwoChildren_whenPrintTree_thenOK() {
+    var tree = new TreeWithTwoChildren<>(treeRepo, utils);
+    var actual = utils.printTree(tree.root);
+    assertThat(actual, is(tree.getExpected()));
   }
 
   @Test
-  public void givenTreeWithChildAndSubChild_whenFindChildren_thenContainsOneChild()
-      throws TreeRepository.NodeAlreadyAttachedToTree, TreeRepository.NodeNotInTree {
-    var root = new DyadicNode("root");
-    treeRepo.startTree(root);
-
-    var child = new DyadicNode("child");
-    treeRepo.addChild(root, child);
-
-    var subChild = new DyadicNode("subChild");
-    treeRepo.addChild(child, subChild);
-
-    var actual = treeRepo.findChildren(root);
+  public void givenTreeWithChildAndSubChild_whenFindChildren_thenContainsOneChild() {
+    var tree = new TreeWithChildAndSubChild<>(treeRepo, utils);
+    var actual = treeRepo.findChildren(tree.root);
     assertThat(actual.size(), is(1));
-    assertThat(actual, containsInRelativeOrder(child));
+    assertThat(actual, containsInRelativeOrder(tree.child1));
   }
 
   @Test
-  public void givenTreeWithChildAndSubChild_whenPrintTree_thenOK()
-      throws TreeRepository.NodeAlreadyAttachedToTree, TreeRepository.NodeNotInTree {
-    var root = new DyadicNode("root");
-    treeRepo.startTree(root);
-
-    var child = new DyadicNode("child");
-    treeRepo.addChild(root, child);
-
-    var subChild = new DyadicNode("subChild");
-    treeRepo.addChild(child, subChild);
-
-    // @formatter:off
-    var expected = String.format(
-        ".\n" +
-        "└── root (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/1]\n" +
-        "    └── child (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/2]\n" +
-        "        └── subChild (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/4]",
-        root.getId(), root.getTreeId(),
-        child.getId(), child.getTreeId(),
-        subChild.getId(), subChild.getTreeId());
-    // @formatter:on
-    var actual = utils.printTree(root);
-    assertThat(actual, is(expected));
+  public void givenTreeWithChildAndSubChild_whenPrintTree_thenOK() {
+    var tree = new TreeWithChildAndSubChild<>(treeRepo, utils);
+    var actual = utils.printTree(tree.root);
+    assertThat(actual, is(tree.getExpected()));
   }
 
   @Test
-  public void givenComplexTree1_whenFindChildren_thenContainsTwoChildren()
-      throws TreeRepository.NodeAlreadyAttachedToTree, TreeRepository.NodeNotInTree {
-    var root = new DyadicNode("root");
-    treeRepo.startTree(root);
+  public void givenComplexTree1_whenPrintTree_thenOK() {
+    var tree = new ComplexTree1<>(treeRepo, utils);
+    var actual = utils.printTree(tree.root);
+    assertThat(actual, is(tree.getExpected()));
+  }
 
-    var child1 = new DyadicNode("child-1");
-    treeRepo.addChild(root, child1);
-
-    var subChild = new DyadicNode("subChild");
-    treeRepo.addChild(child1, subChild);
-
-    var child2 = new DyadicNode("child-2");
-    treeRepo.addChild(root, child2);
-
-    var actual = treeRepo.findChildren(root);
+  @Test
+  public void givenComplexTree1_whenFindChildren_thenContainsTwoChildren() {
+    var tree = new ComplexTree1<>(treeRepo, utils);
+    var actual = treeRepo.findChildren(tree.root);
     assertThat(actual.size(), is(2));
-    assertThat(actual, containsInRelativeOrder(child1, child2));
+    assertThat(actual, containsInRelativeOrder(tree.child1, tree.child2));
   }
 
   @Test
-  public void givenComplexTree2_whenPrintTree_thenOK()
-      throws TreeRepository.NodeAlreadyAttachedToTree, TreeRepository.NodeNotInTree {
-    var root = new DyadicNode("root");
-    treeRepo.startTree(root);
-
-    var child1 = new DyadicNode("child-1");
-    treeRepo.addChild(root, child1);
-
-    var subChild = new DyadicNode("subChild");
-    treeRepo.addChild(child1, subChild);
-
-    var subSubChild = new DyadicNode("subSubChild");
-    treeRepo.addChild(subChild, subSubChild);
-
-    var child2 = new DyadicNode("child-2");
-    treeRepo.addChild(root, child2);
-
-    // @formatter:off
-    var expected = String.format(
-        ".\n" +
-        "└── root (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/1]\n" +
-        "    ├── child-1 (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/2]\n" +
-        "    │   └── subChild (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/4]\n" +
-        "    │       └── subSubChild (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/8]\n" +
-        "    └── child-2 (id: %d) [treeId: %d | lft: 1/2 | rgt: 3/4]",
-        root.getId(), root.getTreeId(),
-        child1.getId(), child1.getTreeId(),
-        subChild.getId(), subChild.getTreeId(),
-        subSubChild.getId(), subSubChild.getTreeId(),
-        child2.getId(), child2.getTreeId());
-    // @formatter:on
-    var actual = utils.printTree(root);
-    assertThat(actual, is(expected));
+  public void givenComplexTree2_whenPrintTree_thenOK() {
+    var tree = new ComplexTree2<>(treeRepo, utils);
+    var actual = utils.printTree(tree.root);
+    assertThat(actual, is(tree.getExpected()));
   }
 
   @Test
-  public void givenComplexTree2_whenFindChildren_thenOK()
-      throws TreeRepository.NodeAlreadyAttachedToTree, TreeRepository.NodeNotInTree {
-    var root = new DyadicNode("root");
-    treeRepo.startTree(root);
+  public void givenComplexTree2_whenFindChildren_thenOK() {
+    var tree = new ComplexTree2<>(treeRepo, utils);
 
-    var child1 = new DyadicNode("child-1");
-    treeRepo.addChild(root, child1);
-
-    var subChild = new DyadicNode("subChild");
-    treeRepo.addChild(child1, subChild);
-
-    var subSubChild = new DyadicNode("subSubChild");
-    treeRepo.addChild(subChild, subSubChild);
-
-    var child2 = new DyadicNode("child-2");
-    treeRepo.addChild(root, child2);
-
-    var actual1 = treeRepo.findChildren(root);
+    var actual1 = treeRepo.findChildren(tree.root);
     assertThat(actual1.size(), is(2));
-    assertThat(actual1, containsInRelativeOrder(child1, child2));
+    assertThat(actual1, containsInRelativeOrder(tree.child1, tree.child2));
 
-    var actual2 = treeRepo.findChildren(child1);
+    var actual2 = treeRepo.findChildren(tree.child1);
     assertThat(actual2.size(), is(1));
-    assertThat(actual2, contains(subChild));
+    assertThat(actual2, contains(tree.subChild1));
 
-    var actual3 = treeRepo.findChildren(subChild);
+    var actual3 = treeRepo.findChildren(tree.subChild1);
     assertThat(actual3.size(), is(1));
-    assertThat(actual3, contains(subSubChild));
-  }
-
-
-  @Test
-  public void givenComplexTree3_whenPrintTree_thenOK()
-      throws TreeRepository.NodeAlreadyAttachedToTree, TreeRepository.NodeNotInTree {
-    var root = new DyadicNode("root");
-    treeRepo.startTree(root);
-
-    var child1 = new DyadicNode("child-1");
-    treeRepo.addChild(root, child1);
-
-    var subChild1 = new DyadicNode("subChild-1");
-    treeRepo.addChild(child1, subChild1);
-
-    var subSubChild = new DyadicNode("subSubChild");
-    treeRepo.addChild(subChild1, subSubChild);
-
-    var subChild2 = new DyadicNode("subChild-2");
-    treeRepo.addChild(child1, subChild2);
-
-    var child2 = new DyadicNode("child-2");
-    treeRepo.addChild(root, child2);
-
-    var lastSubChild = new DyadicNode("lastSubChild");
-    treeRepo.addChild(child2, lastSubChild);
-
-    // @formatter:off
-    var expected = String.format(
-        ".\n" +
-        "└── root (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/1]\n" +
-        "    ├── child-1 (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/2]\n" +
-        "    │   ├── subChild-1 (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/4]\n" +
-        "    │   │   └── subSubChild (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/8]\n" +
-        "    │   └── subChild-2 (id: %d) [treeId: %d | lft: 1/4 | rgt: 3/8]\n" +
-        "    └── child-2 (id: %d) [treeId: %d | lft: 1/2 | rgt: 3/4]\n" +
-        "        └── lastSubChild (id: %d) [treeId: %d | lft: 1/2 | rgt: 5/8]",
-        root.getId(), root.getTreeId(),
-        child1.getId(), child1.getTreeId(),
-        subChild1.getId(), subChild1.getTreeId(),
-        subSubChild.getId(), subSubChild.getTreeId(),
-        subChild2.getId(), subChild2.getTreeId(),
-        child2.getId(), child2.getTreeId(),
-        lastSubChild.getId(), lastSubChild.getTreeId());
-    // @formatter:on
-    var actual = utils.printTree(root);
-    assertThat(actual, is(expected));
-
-    // @formatter:off
-    var expectedPartial = String.format(
-        ".\n" +
-        "└── child-1 (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/2]\n" +
-        "    ├── subChild-1 (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/4]\n" +
-        "    │   └── subSubChild (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/8]\n" +
-        "    └── subChild-2 (id: %d) [treeId: %d | lft: 1/4 | rgt: 3/8]",
-        child1.getId(), child1.getTreeId(),
-        subChild1.getId(), subChild1.getTreeId(),
-        subSubChild.getId(),  subSubChild.getTreeId(),
-        subChild2.getId(), subChild2.getTreeId());
-    // @formatter:on
-    var actualPartial = utils.printTree(child1);
-    assertThat(actualPartial, is(expectedPartial));
+    assertThat(actual3, contains(tree.subSubChild1));
   }
 
   @Test
-  public void givenComplexTree3_whenFindChildren_thenOK()
-      throws TreeRepository.NodeAlreadyAttachedToTree, TreeRepository.NodeNotInTree {
-    var root = new DyadicNode("root");
-    treeRepo.startTree(root);
+  public void givenComplexTree3_whenPrintTree_thenOK() {
+    var tree = new ComplexTree3<>(treeRepo, utils);
 
-    var child1 = new DyadicNode("child-1");
-    treeRepo.addChild(root, child1);
+    var actual = utils.printTree(tree.root);
+    assertThat(actual, is(tree.getExpected()));
 
-    var subChild1 = new DyadicNode("subChild-1");
-    treeRepo.addChild(child1, subChild1);
+    var actualPartial = utils.printTree(tree.child1);
+    assertThat(actualPartial, is(tree.getExpectedPartial()));
+  }
 
-    var subSubChild = new DyadicNode("subSubChild");
-    treeRepo.addChild(subChild1, subSubChild);
+  @Test
+  public void givenComplexTree3_whenFindChildren_thenOK() {
+    var tree = new ComplexTree3<>(treeRepo, utils);
 
-    var subChild2 = new DyadicNode("subChild-2");
-    treeRepo.addChild(child1, subChild2);
-
-    var child2 = new DyadicNode("child-2");
-    treeRepo.addChild(root, child2);
-
-    var lastSubChild = new DyadicNode("lastSubChild");
-    treeRepo.addChild(child2, lastSubChild);
-
-    var actual1 = treeRepo.findChildren(root);
+    var actual1 = treeRepo.findChildren(tree.root);
     assertThat(actual1.size(), is(2));
-    assertThat(actual1, containsInRelativeOrder(child1, child2));
+    assertThat(actual1, containsInRelativeOrder(tree.child1, tree.child2));
 
-    var actual2 = treeRepo.findChildren(child1);
+    var actual2 = treeRepo.findChildren(tree.child1);
     assertThat(actual2.size(), is(2));
-    assertThat(actual2, containsInRelativeOrder(subChild1, subChild2));
+    assertThat(actual2, containsInRelativeOrder(tree.subChild1, tree.subChild2));
   }
 
   @Test
@@ -499,482 +297,548 @@ public class DyadicNodeRepoTest {
 
   @Test
   public void givenParentAndChildInDifferentTrees_whenRemoveChild_thenError()
-      throws TreeRepository.NodeAlreadyAttachedToTree, TreeRepository.NodeNotInTree,
-      TreeRepository.NodeNotChildOfParent {
-    var parent1 = new DyadicNode("parent-1");
-    treeRepo.startTree(parent1);
-    var child1 = new DyadicNode("child-1");
-    treeRepo.addChild(parent1, child1);
-
-    var parent2 = new DyadicNode("parent-2");
-    treeRepo.startTree(parent2);
-    var child2 = new DyadicNode("child-2");
-    treeRepo.addChild(parent2, child2);
+      throws TreeRepository.NodeNotInTree, TreeRepository.NodeNotChildOfParent {
+    var tree1 = new TreeWithOneChild<>(treeRepo, utils);
+    var tree2 = new TreeWithOneChild<>(treeRepo, utils);
 
     exceptionRule.expect(MpttRepository.NodeNotInTree.class);
     exceptionRule
-        .expectMessage(String.format("Nodes not in same tree - parent: %s; child %s", parent1, child2));
-    treeRepo.removeChild(parent1, child2);
+        .expectMessage(
+            String.format("Nodes not in same tree - parent: %s; child %s", tree1.root, tree2.child1));
+    treeRepo.removeChild(tree1.root, tree2.child1);
   }
 
   @Test
   public void givenParentAndChild_whenRemoveChildReverseParentAndChild_thenError()
-      throws TreeRepository.NodeAlreadyAttachedToTree, TreeRepository.NodeNotInTree,
-      TreeRepository.NodeNotChildOfParent {
-    var parent = new DyadicNode("parent");
-    treeRepo.startTree(parent);
-
-    var child = new DyadicNode("child");
-    treeRepo.addChild(parent, child);
+      throws TreeRepository.NodeNotInTree, TreeRepository.NodeNotChildOfParent {
+    var tree = new TreeWithOneChild<>(treeRepo, utils);
 
     exceptionRule.expect(MpttRepository.NodeNotChildOfParent.class);
-    treeRepo.removeChild(child, parent);
+    treeRepo.removeChild(tree.child1, tree.root);
   }
 
   @Test
-  public void givenParentAndChild_whenRemoveChild_thenOK()
-      throws TreeRepository.NodeNotInTree, TreeRepository.NodeAlreadyAttachedToTree,
-      TreeRepository.NodeNotChildOfParent {
-    var parent = new DyadicNode("parent");
-    treeRepo.startTree(parent);
+  public void givenTreeWithOneChild_whenRemoveChild_thenOK()
+      throws TreeRepository.NodeNotInTree, TreeRepository.NodeNotChildOfParent {
+    var tree = new TreeWithOneChild<>(treeRepo, utils);
 
-    var child = new DyadicNode("child");
-    treeRepo.addChild(parent, child);
+    LOG.debug(String.format("before:\n%s", utils.printTree(tree.root)));
+    var removed = treeRepo.removeChild(tree.root, tree.child1);
+    LOG.debug(String.format("after\n%s", utils.printTree(tree.root)));
 
-    LOG.debug(String.format("before:\n%s", utils.printTree(parent)));
-    var removed = treeRepo.removeChild(parent, child);
-    LOG.debug(String.format("after\n%s", utils.printTree(parent)));
+    var actual = treeRepo.findByName(tree.root.getName());
+    assertThat(actual.getLft(), is(actual.getStartLft()));
+    assertThat(actual.getRgt(), is(actual.getStartRgt()));
 
-    var actual = treeRepo.findByName("parent");
     assertThat(treeRepo.findChildren(actual), is(emptyIterable()));
 
     assertThat(treeRepo.count(), is(1L));
 
     assertThat(removed.size(), is(1));
-    assertThat(removed, contains(child));
+    assertThat(removed, contains(tree.child1));
   }
 
   @Test
-  public void givenParentChildAndSubChild_whenRemoveChild_thenOK()
-      throws TreeRepository.NodeNotInTree, TreeRepository.NodeAlreadyAttachedToTree,
-      TreeRepository.NodeNotChildOfParent {
-    var parent = new DyadicNode("parent");
-    treeRepo.startTree(parent);
+  public void givenTreeWithChildAndSubChild_whenRemoveChild_thenOK()
+      throws TreeRepository.NodeNotInTree, TreeRepository.NodeNotChildOfParent {
+    var tree = new TreeWithChildAndSubChild<>(treeRepo, utils);
 
-    var child = new DyadicNode("child");
-    treeRepo.addChild(parent, child);
+    LOG.debug(String.format("before:\n%s", utils.printTree(tree.root)));
+    var removed = treeRepo.removeChild(tree.root, tree.child1);
+    LOG.debug(String.format("after:\n%s", utils.printTree(tree.root)));
 
-    var subChild = new DyadicNode("subChild");
-    treeRepo.addChild(child, subChild);
+    var actual = treeRepo.findByName(tree.root.getName());
+    assertThat(actual.getLft(), is(actual.getStartLft()));
+    assertThat(actual.getRgt(), is(actual.getStartRgt()));
 
-    LOG.debug(String.format("before:\n%s", utils.printTree(parent)));
-    var removed = treeRepo.removeChild(parent, child);
-    LOG.debug(String.format("after:\n%s", utils.printTree(parent)));
-
-    var actual = treeRepo.findByName("parent");
     assertThat(treeRepo.findChildren(actual), is(emptyIterable()));
 
     assertThat(treeRepo.count(), is(1L));
 
     assertThat(removed.size(), is(2));
-    assertThat(removed, contains(child, subChild));
+    assertThat(removed, contains(tree.child1, tree.subChild1));
   }
 
   @Test
-  public void givenParentAndTwoChildren_whenRemoveChild_thenOK()
-      throws TreeRepository.NodeNotInTree, TreeRepository.NodeAlreadyAttachedToTree,
-      TreeRepository.NodeNotChildOfParent {
-    var parent = new DyadicNode("parent");
-    treeRepo.startTree(parent);
+  public void givenTreeWithTwoChildren_whenRemoveChild_thenOK()
+      throws TreeRepository.NodeNotInTree, TreeRepository.NodeNotChildOfParent {
+    var tree = new TreeWithTwoChildren<>(treeRepo, utils);
 
-    var child1 = new DyadicNode("child-1");
-    treeRepo.addChild(parent, child1);
+    LOG.debug(String.format("before:\n%s", utils.printTree(tree.root)));
+    var removed = treeRepo.removeChild(tree.root, tree.child1);
+    LOG.debug(String.format("after:\n%s", utils.printTree(tree.root)));
 
-    var child2 = new DyadicNode("child-2");
-    treeRepo.addChild(parent, child2);
-
-    LOG.debug(String.format("before:\n%s", utils.printTree(parent)));
-    var removed = treeRepo.removeChild(parent, child1);
-    LOG.debug(String.format("after:\n%s", utils.printTree(parent)));
-
-    var actual = treeRepo.findByName("parent");
-    var actualChildren = treeRepo.findChildren(actual);
+    var actualChildren = treeRepo.findChildren(tree.root);
     assertThat(actualChildren.size(), is(1));
-    assertThat(actualChildren, contains(child2));
+    assertThat(actualChildren, contains(tree.child2));
 
     assertThat(treeRepo.count(), is(2L));
 
     assertThat(removed.size(), is(1));
-    assertThat(removed, contains(child1));
+    assertThat(removed, contains(tree.child1));
   }
 
   @Test
-  public void givenParentAndTwoChildren_whenRemoveChild_whenAddChild_thenOK()
-      throws TreeRepository.NodeNotInTree, TreeRepository.NodeAlreadyAttachedToTree,
-      TreeRepository.NodeNotChildOfParent {
-    var parent = new DyadicNode("parent");
-    treeRepo.startTree(parent);
+  public void givenTreeWithTwoChildren_whenRemoveChild_whenAddChild_thenOK()
+      throws TreeRepository.NodeNotInTree, TreeRepository.NodeNotChildOfParent,
+      TreeRepository.NodeAlreadyAttachedToTree {
+    var tree = new TreeWithTwoChildren<>(treeRepo, utils);
 
-    var child1 = new DyadicNode("child-1");
-    treeRepo.addChild(parent, child1);
-
-    var child2 = new DyadicNode("child-2");
-    treeRepo.addChild(parent, child2);
-
-    LOG.debug(String.format("before remove:\n%s", utils.printTree(parent)));
-    treeRepo.removeChild(parent, child1);
-    LOG.debug(String.format("after remove:\n%s", utils.printTree(parent)));
+    LOG.debug(String.format("before remove:\n%s", utils.printTree(tree.root)));
+    treeRepo.removeChild(tree.root, tree.child1);
+    LOG.debug(String.format("after remove:\n%s", utils.printTree(tree.root)));
 
     var newChild = new DyadicNode("newChild");
-    treeRepo.addChild(parent, newChild);
+    treeRepo.addChild(tree.root, newChild);
 
     // @formatter:off
     var expected = String.format(
         ".\n" +
-        "└── parent (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/1]\n" +
+        "└── root (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/1]\n" +
         "    ├── child-2 (id: %d) [treeId: %d | lft: 1/2 | rgt: 3/4]\n" +
         "    └── newChild (id: %d) [treeId: %d | lft: 3/4 | rgt: 7/8]",
-        parent.getId(), parent.getTreeId(),
-        child2.getId(), child2.getTreeId(),
+        tree.root.getId(), tree.root.getTreeId(),
+        tree.child2.getId(), tree.child2.getTreeId(),
         newChild.getId(),  newChild.getTreeId());
     // @formatter:on
-    var actual = utils.printTree(parent);
+    var actual = utils.printTree(tree.root);
     LOG.debug(String.format("after add:\n%s", actual));
 
     assertThat(actual, is(expected));
   }
 
   @Test
-  public void givenParentChildAndSubChild_whenRemoveSubChild_thenOK()
-      throws TreeRepository.NodeNotInTree, TreeRepository.NodeAlreadyAttachedToTree,
-      TreeRepository.NodeNotChildOfParent {
-    var parent = new DyadicNode("parent");
-    treeRepo.startTree(parent);
+  public void givenTreeWithChildAndSubChild_whenRemoveSubChild_thenOK()
+      throws TreeRepository.NodeNotInTree, TreeRepository.NodeNotChildOfParent {
+    var tree = new TreeWithChildAndSubChild<>(treeRepo, utils);
 
-    var child = new DyadicNode("child");
-    treeRepo.addChild(parent, child);
+    LOG.debug(String.format("before:\n%s", utils.printTree(tree.root)));
+    var removed = treeRepo.removeChild(tree.root, tree.subChild1);
+    LOG.debug(String.format("after:\n%s", utils.printTree(tree.root)));
 
-    var subChild = new DyadicNode("subChild");
-    treeRepo.addChild(child, subChild);
-
-    LOG.debug(String.format("before:\n%s", utils.printTree(parent)));
-    var removed = treeRepo.removeChild(parent, subChild);
-    LOG.debug(String.format("after:\n%s", utils.printTree(parent)));
-
-    var actual = treeRepo.findByName("parent");
-
-    var actualChildren = treeRepo.findChildren(actual);
+    var actualChildren = treeRepo.findChildren(tree.root);
     assertThat(actualChildren.size(), is(1));
-    assertThat(actualChildren, contains(child));
+    assertThat(actualChildren, contains(tree.child1));
 
     assertThat(treeRepo.count(), is(2L));
 
     assertThat(removed.size(), is(1));
-    assertThat(removed, contains(subChild));
+    assertThat(removed, contains(tree.subChild1));
 
-    assertThat(treeRepo.findChildren(child), is(empty()));
+    assertThat(treeRepo.findChildren(tree.child1), is(empty()));
   }
 
   @Test
   public void givenComplexTree3_whenRemoveChild1_thenOK()
-      throws TreeRepository.NodeAlreadyAttachedToTree, TreeRepository.NodeNotInTree,
-      TreeRepository.NodeNotChildOfParent {
-    var root = new DyadicNode("root");
-    treeRepo.startTree(root);
+      throws TreeRepository.NodeNotInTree, TreeRepository.NodeNotChildOfParent {
+    var tree = new ComplexTree3<>(treeRepo, utils);
 
-    var child1 = new DyadicNode("child-1");
-    treeRepo.addChild(root, child1);
+    LOG.debug(String.format("before:\n%s", utils.printTree(tree.root)));
+    treeRepo.removeChild(tree.root, tree.child1);
+    LOG.debug(String.format("after:\n%s", utils.printTree(tree.root)));
 
-    var subChild1 = new DyadicNode("subChild-1");
-    treeRepo.addChild(child1, subChild1);
-
-    var subSubChild = new DyadicNode("subSubChild");
-    treeRepo.addChild(subChild1, subSubChild);
-
-    var subChild2 = new DyadicNode("subChild-2");
-    treeRepo.addChild(child1, subChild2);
-
-    var child2 = new DyadicNode("child-2");
-    treeRepo.addChild(root, child2);
-
-    var lastSubChild = new DyadicNode("lastSubChild");
-    treeRepo.addChild(child2, lastSubChild);
-
-    LOG.debug(String.format("before:\n%s", utils.printTree(root)));
-    treeRepo.removeChild(root, child1);
-    LOG.debug(String.format("after:\n%s", utils.printTree(root)));
-
-    // @formatter:off
-    var expected = String.format(
-        ".\n" +
-        "└── root (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/1]\n" +
-        "    └── child-2 (id: %d) [treeId: %d | lft: 1/2 | rgt: 3/4]\n" +
-        "        └── lastSubChild (id: %d) [treeId: %d | lft: 1/2 | rgt: 5/8]",
-        root.getId(), root.getTreeId(),
-        child2.getId(), child2.getTreeId(),
-        lastSubChild.getId(), lastSubChild.getTreeId());
-    // @formatter:on
-    var actual = utils.printTree(root);
-    assertThat(actual, is(expected));
+    var actual = utils.printTree(tree.root);
+    assertThat(actual, is(tree.getExpectedAfterChild1Removal()));
   }
 
   @Test
   public void givenComplexTree3_whenRemoveChild2_thenOK()
-      throws TreeRepository.NodeAlreadyAttachedToTree, TreeRepository.NodeNotInTree,
-      TreeRepository.NodeNotChildOfParent {
-    var root = new DyadicNode("root");
-    treeRepo.startTree(root);
+      throws TreeRepository.NodeNotInTree, TreeRepository.NodeNotChildOfParent {
+    var tree = new ComplexTree3<>(treeRepo, utils);
 
-    var child1 = new DyadicNode("child-1");
-    treeRepo.addChild(root, child1);
+    LOG.debug(String.format("before:\n%s", utils.printTree(tree.root)));
+    treeRepo.removeChild(tree.root, tree.child2);
+    LOG.debug(String.format("after:\n%s", utils.printTree(tree.root)));
 
-    var subChild1 = new DyadicNode("subChild-1");
-    treeRepo.addChild(child1, subChild1);
-
-    var subSubChild = new DyadicNode("subSubChild");
-    treeRepo.addChild(subChild1, subSubChild);
-
-    var subChild2 = new DyadicNode("subChild-2");
-    treeRepo.addChild(child1, subChild2);
-
-    var child2 = new DyadicNode("child-2");
-    treeRepo.addChild(root, child2);
-
-    var lastSubChild = new DyadicNode("lastSubChild");
-    treeRepo.addChild(child2, lastSubChild);
-
-    LOG.debug(String.format("before:\n%s", utils.printTree(root)));
-    treeRepo.removeChild(root, child2);
-    LOG.debug(String.format("after:\n%s", utils.printTree(root)));
-
-    // @formatter:off
-    var expected = String.format(
-        ".\n" +
-        "└── root (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/1]\n" +
-        "    └── child-1 (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/2]\n" +
-        "        ├── subChild-1 (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/4]\n" +
-        "        │   └── subSubChild (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/8]\n" +
-        "        └── subChild-2 (id: %d) [treeId: %d | lft: 1/4 | rgt: 3/8]",
-        root.getId(), root.getTreeId(),
-        child1.getId(), child1.getTreeId(),
-        subChild1.getId(), subChild1.getTreeId(),
-        subSubChild.getId(), subSubChild.getTreeId(),
-        subChild2.getId(), subChild2.getTreeId());
-    // @formatter:on
-    var actual = utils.printTree(root);
-    assertThat(actual, is(expected));
+    var actual = utils.printTree(tree.root);
+    assertThat(actual, is(tree.getExpectedAfterChild2Removal()));
   }
 
   @Test
-  public void givenComplexTree3_whenFindTreeRoot_thenOK()
-      throws TreeRepository.NodeAlreadyAttachedToTree, TreeRepository.NodeNotInTree {
-    var root = new DyadicNode("root");
-    treeRepo.startTree(root);
+  public void givenComplexTree3_whenFindTreeRoot_thenOK() {
+    var tree = new ComplexTree3<>(treeRepo, utils);
 
-    var child1 = new DyadicNode("child-1");
-    treeRepo.addChild(root, child1);
+    LOG.debug(String.format("tree to search for root:\n%s", utils.printTree(tree.root)));
 
-    var subChild1 = new DyadicNode("subChild-1");
-    treeRepo.addChild(child1, subChild1);
-
-    var subSubChild = new DyadicNode("subSubChild");
-    treeRepo.addChild(subChild1, subSubChild);
-
-    var subChild2 = new DyadicNode("subChild-2");
-    treeRepo.addChild(child1, subChild2);
-
-    var child2 = new DyadicNode("child-2");
-    treeRepo.addChild(root, child2);
-
-    var lastSubChild = new DyadicNode("lastSubChild");
-    treeRepo.addChild(child2, lastSubChild);
-
-    LOG.debug(String.format("tree to search for root:\n%s", utils.printTree(root)));
-
-    var actual = treeRepo.findTreeRoot(root.getTreeId());
-    assertThat(actual, is(root));
+    var actual = treeRepo.findTreeRoot(tree.treeId);
+    assertThat(actual, is(tree.root));
   }
 
   @Test
-  public void givenRoot_whenFindAncestorsOfRoot_thenEmptyList()
-      throws TreeRepository.NodeAlreadyAttachedToTree {
-    var root = new DyadicNode("root");
-    treeRepo.startTree(root);
-
-    var actual = treeRepo.findAncestors(root);
+  public void givenRoot_whenFindAncestorsOfRoot_thenEmptyList() {
+    var tree = new TreeWithNoChildren<>(treeRepo, utils);
+    var actual = treeRepo.findAncestors(tree.root);
     assertThat(actual, is(empty()));
   }
 
   @Test
-  public void givenRootAndChild_whenFindAncestorsOfChild_thenListOfRoot()
-      throws TreeRepository.NodeAlreadyAttachedToTree, TreeRepository.NodeNotInTree {
-    var root = new DyadicNode("root");
-    treeRepo.startTree(root);
-
-    var child = new DyadicNode("child");
-    treeRepo.addChild(root, child);
-
-    var actual = treeRepo.findAncestors(child);
+  public void givenTreeWithOneChild_whenFindAncestorsOfChild_thenListOfRoot() {
+    var tree = new TreeWithOneChild<>(treeRepo, utils);
+    var actual = treeRepo.findAncestors(tree.child1);
     assertThat(actual.size(), is(1));
-    assertThat(actual, contains(root));
+    assertThat(actual, contains(tree.root));
   }
 
   @Test
-  public void givenRootChildAndSubChild_whenFindAncestors_thenOK()
-      throws TreeRepository.NodeAlreadyAttachedToTree, TreeRepository.NodeNotInTree {
-    var root = new DyadicNode("root");
-    treeRepo.startTree(root);
+  public void givenTreeWithChildAndSubChild_whenFindAncestors_thenOK() {
+    var tree = new TreeWithChildAndSubChild<>(treeRepo, utils);
 
-    var child = new DyadicNode("child");
-    treeRepo.addChild(root, child);
-
-    var subChild = new DyadicNode("subChild");
-    treeRepo.addChild(child, subChild);
-
-    var ancestorsOfRoot = treeRepo.findAncestors(root);
+    var ancestorsOfRoot = treeRepo.findAncestors(tree.root);
     assertThat(ancestorsOfRoot, is(empty()));
 
-    var ancestorsOfChild = treeRepo.findAncestors(child);
+    var ancestorsOfChild = treeRepo.findAncestors(tree.child1);
     assertThat(ancestorsOfChild.size(), is(1));
-    assertThat(ancestorsOfChild, contains(root));
+    assertThat(ancestorsOfChild, contains(tree.root));
 
-    var ancestorsOfSubChild = treeRepo.findAncestors(subChild);
+    var ancestorsOfSubChild = treeRepo.findAncestors(tree.subChild1);
     assertThat(ancestorsOfSubChild.size(), is(2));
-    assertThat(ancestorsOfSubChild, containsInRelativeOrder(root, child));
+    assertThat(ancestorsOfSubChild, containsInRelativeOrder(tree.root, tree.child1));
   }
 
   @Test
-  public void givenComplexTree3_whenFindAncestors_thenOK()
-      throws TreeRepository.NodeAlreadyAttachedToTree, TreeRepository.NodeNotInTree {
-    var root = new DyadicNode("root");
-    treeRepo.startTree(root);
-
-    var child1 = new DyadicNode("child-1");
-    treeRepo.addChild(root, child1);
-
-    var subChild1 = new DyadicNode("subChild-1");
-    treeRepo.addChild(child1, subChild1);
-
-    var subSubChild = new DyadicNode("subSubChild");
-    treeRepo.addChild(subChild1, subSubChild);
-
-    var subChild2 = new DyadicNode("subChild-2");
-    treeRepo.addChild(child1, subChild2);
-
-    var child2 = new DyadicNode("child-2");
-    treeRepo.addChild(root, child2);
-
-    var lastSubChild = new DyadicNode("lastSubChild");
-    treeRepo.addChild(child2, lastSubChild);
-    /*
-    .
-    └── root (id: %d) [treeId: 100 | lft: 0/1 | rgt: 1/1]
-        ├── child-1 (id: %d) [treeId: 100 | lft: 0/1 | rgt: 1/2]
-        │   ├── subChild-1 (id: %d) [treeId: 100 | lft: 0/1 | rgt: 1/4]
-        │   │   └── subSubChild (id: %d) [treeId: 100 | lft: 0/1 | rgt: 1/8]
-        │   └── subChild-2 (id: %d) [treeId: 100 | lft: 1/4 | rgt: 3/8]
-        └── child-2 (id: %d) [treeId: 100 | lft: 1/2 | rgt: 3/4]
-            └── lastSubChild (id: %d) [treeId: 100 | lft: 1/2 | rgt: 5/8]
-    */
-    assertThat(treeRepo.findAncestors(subChild1), containsInRelativeOrder(root, child1));
-    assertThat(treeRepo.findAncestors(subChild2), containsInRelativeOrder(root, child1));
-    assertThat(treeRepo.findAncestors(subSubChild), containsInRelativeOrder(root, child1, subChild1));
+  public void givenComplexTree3_whenFindAncestors_thenOK() {
+    var tree = new ComplexTree3<>(treeRepo, utils);
+    assertThat(treeRepo.findAncestors(tree.subChild1), containsInRelativeOrder(tree.root, tree.child1));
+    assertThat(treeRepo.findAncestors(tree.subChild2), containsInRelativeOrder(tree.root, tree.child1));
+    assertThat(treeRepo.findAncestors(tree.subSubChild1),
+        containsInRelativeOrder(tree.root, tree.child1, tree.subChild1));
   }
 
   @Test
   public void givenRoot_whenFindParentOfRoot_thenNull() throws TreeRepository.NodeAlreadyAttachedToTree {
     var root = new DyadicNode("root");
     treeRepo.startTree(root);
-
     assertThat(treeRepo.findParent(root), is(Optional.empty()));
   }
 
   @Test
-  public void givenRootAndChild_whenFindParentOfChild_thenRoot()
-      throws TreeRepository.NodeAlreadyAttachedToTree, TreeRepository.NodeNotInTree {
-    var root = new DyadicNode("root");
-    treeRepo.startTree(root);
-
-    var child = new DyadicNode("child");
-    treeRepo.addChild(root, child);
-
-    assertThat(treeRepo.findParent(root), is(Optional.empty()));
-    assertThat(treeRepo.findParent(child).get(), is(root));
+  public void givenTreeWithOneChild_whenFindParentOfChild_thenRoot() {
+    var tree = new TreeWithOneChild<>(treeRepo, utils);
+    assertThat(treeRepo.findParent(tree.root), is(Optional.empty()));
+    assertThat(treeRepo.findParent(tree.child1).get(), is(tree.root));
   }
 
   @Test
-  public void givenRootChildAndSubChild_whenFindParent_thenOK()
-      throws TreeRepository.NodeAlreadyAttachedToTree, TreeRepository.NodeNotInTree {
-    var root = new DyadicNode("root");
-    treeRepo.startTree(root);
-
-    var child = new DyadicNode("child");
-    treeRepo.addChild(root, child);
-
-    var subChild = new DyadicNode("subChild");
-    treeRepo.addChild(child, subChild);
-
-    assertThat(treeRepo.findParent(root), is(Optional.empty()));
-    assertThat(treeRepo.findParent(child).get(), is(root));
-    assertThat(treeRepo.findParent(subChild).get(), is(child));
+  public void givenTreeWithChildAndSubChild_whenFindParent_thenOK() {
+    var tree = new TreeWithChildAndSubChild<>(treeRepo, utils);
+    assertThat(treeRepo.findParent(tree.root), is(Optional.empty()));
+    assertThat(treeRepo.findParent(tree.child1).get(), is(tree.root));
+    assertThat(treeRepo.findParent(tree.subChild1).get(), is(tree.child1));
   }
 
   @Test
-  public void givenRootAndTwoChildren_whenFindParent_thenOK()
-      throws TreeRepository.NodeAlreadyAttachedToTree, TreeRepository.NodeNotInTree {
-    var root = new DyadicNode("root");
-    treeRepo.startTree(root);
-
-    var child1 = new DyadicNode("child-1");
-    treeRepo.addChild(root, child1);
-
-    var child2 = new DyadicNode("child-2");
-    treeRepo.addChild(root, child2);
-
-    assertThat(treeRepo.findParent(root), is(Optional.empty()));
-    assertThat(treeRepo.findParent(child1).get(), is(root));
-    assertThat(treeRepo.findParent(child2).get(), is(root));
+  public void givenTreeWithTwoChildren_whenFindParent_thenOK() {
+    var tree = new TreeWithTwoChildren<>(treeRepo, utils);
+    assertThat(treeRepo.findParent(tree.root), is(Optional.empty()));
+    assertThat(treeRepo.findParent(tree.child1).get(), is(tree.root));
+    assertThat(treeRepo.findParent(tree.child2).get(), is(tree.root));
   }
 
   @Test
-  public void givenComplexTree3_whenFindParent_thenOK()
-      throws TreeRepository.NodeAlreadyAttachedToTree, TreeRepository.NodeNotInTree {
-    var root = new DyadicNode("root");
-    treeRepo.startTree(root);
+  public void givenComplexTree3_whenFindParent_thenOK() {
+    var tree = new ComplexTree3<>(treeRepo, utils);
+    assertThat(treeRepo.findParent(tree.root), is(Optional.empty()));
+    assertThat(treeRepo.findParent(tree.child1).get(), is(tree.root));
+    assertThat(treeRepo.findParent(tree.child2).get(), is(tree.root));
+    assertThat(treeRepo.findParent(tree.subChild1).get(), is(tree.child1));
+    assertThat(treeRepo.findParent(tree.subChild2).get(), is(tree.child1));
+    assertThat(treeRepo.findParent(tree.subSubChild1).get(), is(tree.subChild1));
+    assertThat(treeRepo.findParent(tree.lastSubChild).get(), is(tree.child2));
+  }
 
-    var child1 = new DyadicNode("child-1");
-    treeRepo.addChild(root, child1);
+  @SuppressWarnings("rawtypes")
+  static class TreeWithNoChildren<T extends TreeEntity> {
+    public T root;
 
-    var subChild1 = new DyadicNode("subChild-1");
-    treeRepo.addChild(child1, subChild1);
+    protected Long treeId;
 
-    var subSubChild = new DyadicNode("subSubChild");
-    treeRepo.addChild(subChild1, subSubChild);
+    protected final TreeRepository<T> repo;
+    protected final TreeUtils<T> utils;
 
-    var subChild2 = new DyadicNode("subChild-2");
-    treeRepo.addChild(child1, subChild2);
+    public TreeWithNoChildren(TreeRepository<T> repo, TreeUtils<T> utils) {
+      this.repo = repo;
+      this.utils = utils;
 
-    var child2 = new DyadicNode("child-2");
-    treeRepo.addChild(root, child2);
+      try {
+        setupTree();
+      } catch (Exception e) {
+        // do nothing
+      }
+    }
 
-    var lastSubChild = new DyadicNode("lastSubChild");
-    treeRepo.addChild(child2, lastSubChild);
-    /*
-    .
-    └── root (id: %d) [treeId: 100 | lft: 0/1 | rgt: 1/1]
-        ├── child-1 (id: %d) [treeId: 100 | lft: 0/1 | rgt: 1/2]
-        │   ├── subChild-1 (id: %d) [treeId: 100 | lft: 0/1 | rgt: 1/4]
-        │   │   └── subSubChild (id: %d) [treeId: 100 | lft: 0/1 | rgt: 1/8]
-        │   └── subChild-2 (id: %d) [treeId: 100 | lft: 1/4 | rgt: 3/8]
-        └── child-2 (id: %d) [treeId: 100 | lft: 1/2 | rgt: 3/4]
-            └── lastSubChild (id: %d) [treeId: 100 | lft: 1/2 | rgt: 5/8]
-    */
-    assertThat(treeRepo.findParent(root), is(Optional.empty()));
-    assertThat(treeRepo.findParent(child1).get(), is(root));
-    assertThat(treeRepo.findParent(child2).get(), is(root));
-    assertThat(treeRepo.findParent(subChild1).get(), is(child1));
-    assertThat(treeRepo.findParent(subChild2).get(), is(child1));
-    assertThat(treeRepo.findParent(subSubChild).get(), is(subChild1));
-    assertThat(treeRepo.findParent(lastSubChild).get(), is(child2));
+    protected void setupTree()
+        throws TreeRepository.NodeAlreadyAttachedToTree, InvocationTargetException,
+        NoSuchMethodException, InstantiationException, IllegalAccessException,
+        TreeRepository.NodeNotInTree {
+      root = repo.createNode("root");
+
+      this.treeId = repo.startTree(root);
+    }
+
+    public String getExpected() {
+      // @formatter:off
+      return String.format(
+          ".\n" +
+          "└── root (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/1]",
+          root.getId(), root.getTreeId());
+      // @formatter:on
+    }
+  }
+
+  @SuppressWarnings("rawtypes")
+  static class TreeWithOneChild<T extends TreeEntity> extends TreeWithNoChildren<T> {
+    public T child1;
+
+    public TreeWithOneChild(TreeRepository<T> repo, TreeUtils<T> utils) {
+      super(repo, utils);
+    }
+
+    protected void setupTree()
+        throws TreeRepository.NodeAlreadyAttachedToTree, TreeRepository.NodeNotInTree,
+        InvocationTargetException, NoSuchMethodException, InstantiationException,
+        IllegalAccessException {
+      super.setupTree();
+      child1 = repo.createNode("child-1");
+      repo.addChild(root, child1);
+    }
+
+    @Override
+    public String getExpected() {
+      // @formatter:off
+      return String.format(
+          ".\n" +
+          "└── root (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/1]\n"+
+          "    └── child-1 (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/2]",
+          root.getId(), root.getTreeId(),
+          child1.getId(), child1.getTreeId());
+      // @formatter:on
+    }
+  }
+
+  @SuppressWarnings("rawtypes")
+  static class TreeWithTwoChildren<T extends TreeEntity> extends TreeWithOneChild<T> {
+    public T child2;
+
+    public TreeWithTwoChildren(TreeRepository<T> repo, TreeUtils<T> utils) {
+      super(repo, utils);
+    }
+
+    @Override
+    protected void setupTree()
+        throws TreeRepository.NodeAlreadyAttachedToTree, TreeRepository.NodeNotInTree,
+        NoSuchMethodException, InstantiationException, IllegalAccessException,
+        InvocationTargetException {
+      super.setupTree();
+      child2 = repo.createNode("child-2");
+      repo.addChild(root, child2);
+    }
+
+    @Override
+    public String getExpected() {
+      // @formatter:off
+      return String.format(
+          ".\n" +
+          "└── root (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/1]\n" +
+          "    ├── child-1 (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/2]\n" +
+          "    └── child-2 (id: %d) [treeId: %d | lft: 1/2 | rgt: 3/4]",
+          root.getId(), root.getTreeId(),
+          child1.getId(), child1.getTreeId(),
+          child2.getId(), child2.getTreeId());
+      // @formatter:on
+    }
+  }
+
+  @SuppressWarnings("rawtypes")
+  static class TreeWithChildAndSubChild<T extends TreeEntity> extends TreeWithOneChild<T> {
+    public T subChild1;
+
+    public TreeWithChildAndSubChild(TreeRepository<T> repo, TreeUtils<T> utils) {
+      super(repo, utils);
+    }
+
+    @Override
+    protected void setupTree()
+        throws TreeRepository.NodeAlreadyAttachedToTree, TreeRepository.NodeNotInTree,
+        NoSuchMethodException, InstantiationException, IllegalAccessException,
+        InvocationTargetException {
+      super.setupTree();
+      subChild1 = repo.createNode("subChild-1");
+      repo.addChild(child1, subChild1);
+    }
+
+    @Override
+    public String getExpected() {
+      // @formatter:off
+      return String.format(
+          ".\n" +
+          "└── root (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/1]\n" +
+          "    └── child-1 (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/2]\n" +
+          "        └── subChild-1 (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/4]",
+          root.getId(), root.getTreeId(),
+          child1.getId(), child1.getTreeId(),
+          subChild1.getId(), subChild1.getTreeId());
+      // @formatter:on
+    }
+  }
+
+  @SuppressWarnings("rawtypes")
+  static class ComplexTree1<T extends TreeEntity> extends TreeWithTwoChildren<T> {
+    public T subChild1;
+
+    public ComplexTree1(TreeRepository<T> repo, TreeUtils<T> utils) {
+      super(repo, utils);
+    }
+
+    @Override
+    protected void setupTree()
+        throws TreeRepository.NodeAlreadyAttachedToTree, TreeRepository.NodeNotInTree,
+        InvocationTargetException, NoSuchMethodException, InstantiationException,
+        IllegalAccessException {
+      super.setupTree();
+      subChild1 = repo.createNode("subChild-1");
+      repo.addChild(child1, subChild1);
+    }
+
+    @Override
+    public String getExpected() {
+      // @formatter:off
+      return String.format(
+          ".\n" +
+          "└── root (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/1]\n" +
+          "    ├── child-1 (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/2]\n" +
+          "    │   └── subChild-1 (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/4]\n" +
+          "    └── child-2 (id: %d) [treeId: %d | lft: 1/2 | rgt: 3/4]",
+          root.getId(), root.getTreeId(),
+          child1.getId(), child1.getTreeId(),
+          subChild1.getId(), subChild1.getTreeId(),
+          child2.getId(), child2.getTreeId());
+      // @formatter:on
+    }
+  }
+
+  @SuppressWarnings("rawtypes")
+  static class ComplexTree2<T extends TreeEntity> extends ComplexTree1<T> {
+    public T subSubChild1;
+
+    public ComplexTree2(TreeRepository<T> repo, TreeUtils<T> utils) {
+      super(repo, utils);
+    }
+
+    @Override
+    protected void setupTree()
+        throws TreeRepository.NodeAlreadyAttachedToTree, TreeRepository.NodeNotInTree,
+        NoSuchMethodException, InstantiationException, IllegalAccessException,
+        InvocationTargetException {
+      super.setupTree();
+      subSubChild1 = repo.createNode("subSubChild-1");
+      repo.addChild(subChild1, subSubChild1);
+    }
+
+    @Override
+    public String getExpected() {
+      // @formatter:off
+      return String.format(
+          ".\n" +
+          "└── root (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/1]\n" +
+          "    ├── child-1 (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/2]\n" +
+          "    │   └── subChild-1 (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/4]\n" +
+          "    │       └── subSubChild-1 (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/8]\n" +
+          "    └── child-2 (id: %d) [treeId: %d | lft: 1/2 | rgt: 3/4]",
+          root.getId(), root.getTreeId(),
+          child1.getId(), child1.getTreeId(),
+          subChild1.getId(), subChild1.getTreeId(),
+          subSubChild1.getId(), subSubChild1.getTreeId(),
+          child2.getId(), child2.getTreeId());
+      // @formatter:on
+    }
+  }
+
+  @SuppressWarnings("rawtypes")
+  static class ComplexTree3<T extends TreeEntity> extends ComplexTree2<T> {
+    public T subChild2;
+    public T lastSubChild;
+
+    public ComplexTree3(TreeRepository<T> repo, TreeUtils<T> utils) {
+      super(repo, utils);
+    }
+
+    @Override
+    protected void setupTree()
+        throws TreeRepository.NodeAlreadyAttachedToTree, TreeRepository.NodeNotInTree,
+        InvocationTargetException, NoSuchMethodException, InstantiationException,
+        IllegalAccessException {
+      super.setupTree();
+      subChild2 = repo.createNode("subChild-2");
+      repo.addChild(child1, subChild2);
+      lastSubChild = repo.createNode("lastSubChild");
+      repo.addChild(child2, lastSubChild);
+    }
+
+    @Override
+    public String getExpected() {
+      // @formatter:off
+      return String.format(
+          ".\n" +
+          "└── root (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/1]\n" +
+          "    ├── child-1 (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/2]\n" +
+          "    │   ├── subChild-1 (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/4]\n" +
+          "    │   │   └── subSubChild-1 (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/8]\n" +
+          "    │   └── subChild-2 (id: %d) [treeId: %d | lft: 1/4 | rgt: 3/8]\n" +
+          "    └── child-2 (id: %d) [treeId: %d | lft: 1/2 | rgt: 3/4]\n" +
+          "        └── lastSubChild (id: %d) [treeId: %d | lft: 1/2 | rgt: 5/8]",
+          root.getId(), root.getTreeId(),
+          child1.getId(), child1.getTreeId(),
+          subChild1.getId(), subChild1.getTreeId(),
+          subSubChild1.getId(), subSubChild1.getTreeId(),
+          subChild2.getId(), subChild2.getTreeId(),
+          child2.getId(), child2.getTreeId(),
+          lastSubChild.getId(), lastSubChild.getTreeId());
+      // @formatter:on
+    }
+
+    public String getExpectedPartial() {
+      // @formatter:off
+      return String.format(
+          ".\n" +
+              "└── child-1 (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/2]\n" +
+              "    ├── subChild-1 (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/4]\n" +
+              "    │   └── subSubChild-1 (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/8]\n" +
+              "    └── subChild-2 (id: %d) [treeId: %d | lft: 1/4 | rgt: 3/8]",
+          child1.getId(), child1.getTreeId(),
+          subChild1.getId(), subChild1.getTreeId(),
+          subSubChild1.getId(),  subSubChild1.getTreeId(),
+          subChild2.getId(), subChild2.getTreeId());
+      // @formatter:on
+    }
+
+    public String getExpectedAfterChild1Removal() {
+      // @formatter:off
+      return String.format(
+          ".\n" +
+              "└── root (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/1]\n" +
+              "    └── child-2 (id: %d) [treeId: %d | lft: 1/2 | rgt: 3/4]\n" +
+              "        └── lastSubChild (id: %d) [treeId: %d | lft: 1/2 | rgt: 5/8]",
+          root.getId(), root.getTreeId(),
+          child2.getId(), child2.getTreeId(),
+          lastSubChild.getId(), lastSubChild.getTreeId());
+      // @formatter:on
+    }
+
+    public String getExpectedAfterChild2Removal() {
+      // @formatter:off
+      return String.format(
+          ".\n" +
+              "└── root (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/1]\n" +
+              "    └── child-1 (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/2]\n" +
+              "        ├── subChild-1 (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/4]\n" +
+              "        │   └── subSubChild-1 (id: %d) [treeId: %d | lft: 0/1 | rgt: 1/8]\n" +
+              "        └── subChild-2 (id: %d) [treeId: %d | lft: 1/4 | rgt: 3/8]",
+          root.getId(), root.getTreeId(),
+          child1.getId(), child1.getTreeId(),
+          subChild1.getId(), subChild1.getTreeId(),
+          subSubChild1.getId(), subSubChild1.getTreeId(),
+          subChild2.getId(), subChild2.getTreeId());
+      // @formatter:on
+    }
   }
 }
