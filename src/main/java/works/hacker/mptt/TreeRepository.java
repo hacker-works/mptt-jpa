@@ -30,7 +30,7 @@ public interface TreeRepository<T extends TreeEntity> {
    * <pre><code>
    *  {@literal @}Override
    *   public T findTreeRoot(Long treeId) throws NoResultException {
-   *     var query = String.format(
+   *     String query = String.format(
    *         "SELECT node FROM %s node" +
    *             " WHERE node.treeId = :treeId AND node.lft = 1",
    *         entityClass.getSimpleName());
