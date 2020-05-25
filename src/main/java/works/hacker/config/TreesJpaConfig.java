@@ -17,10 +17,10 @@ import javax.sql.DataSource;
 import java.util.Properties;
 
 @Configuration
-@EnableJpaRepositories(basePackages = "works.hacker.repo")
+@EnableJpaRepositories(basePackages = { "works.hacker.repo.classic", "works.hacker.repo.dyadic"})
 @PropertySource("application.properties")
 @EnableTransactionManagement
-public class TagTreeJpaConfig {
+public class TreesJpaConfig {
   @Autowired
   private Environment env;
 
@@ -38,7 +38,7 @@ public class TagTreeJpaConfig {
   public LocalContainerEntityManagerFactoryBean entityManagerFactory() {
     final LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
     em.setDataSource(dataSource());
-    em.setPackagesToScan(new String[]{"works.hacker.model"});
+    em.setPackagesToScan(new String[]{"works.hacker.model.classic", "works.hacker.model.dyadic"});
     em.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
     em.setJpaProperties(additionalProperties());
     return em;
