@@ -15,7 +15,7 @@ Both of the above Wikipedia articles give a good overview, but in order to under
 
 MPTT, or *modified preorder tree traversal*, is an efficient way to store hierarchical data in the flat structure of a relational database table. It uses the nested set model as it provides a faster option for read operations compared to the tree traversal operations of an adjacency list.
 
-## The MPTT Structure
+## The Classic MPTT Structure
 
 The nested set model is using a technique to number the nodes according to a tree traversal, which visits each node twice, assigning numbers in order of visiting, at both visits. This leaves two numbers for each node, which are stored as two attributes. Querying and read operations becomes inexpensive: hierarchy membership can be tested by comparing these numbers. Updating (adding and removal of tree members) requires renumbering and is therefore expensive.
 
@@ -45,17 +45,47 @@ The resulting flat table to persist in the relational database would be:
 
 **Table 1: MPTT Flat Representation (as relational database table).**
 
+## Dyadic Fractions as MPTT Structure
+
+The classic MPTT structure above is asymmetric from performance perspective. Querying / reading operations are quite fast, while hierarchy reorganisation (adding or removing nodes) requires roughly half of the tree nodes to be relabeled to maintain the nested set model.
+
+A less known model is the **nested intervals**-model, which doesn't require such relabeling.
+
+The easiest way to nest intervals is splitting parent intervals into two halves, such as the **Dyadic Fractions**.
+
+<img src="diagrams/03-dyadic-fractions.svg" alt="Fig. 3: Dyadic Fractions." style="zoom:100%" />
+
+**Fig. 3: Dyadic Fractions.**   
+
+As you'll notice in the diagram, here the tree is build as binary tree. With a simple procedure the interval of the new node is determined from the parent interval and the youngest child.
+
+The resulting flat table to persist in the relational database would be:
+
+| ID | Name        | TREE_ID | LFT | RGT |
+|----|-------------|--------:|----:|----:|
+| 1  | root        | 100     | 0/1 | 1/1 |
+| 2  | child-1     | 100     | 0/1 | 1/2 |
+| 3  | subChild-1  | 100     | 0/1 | 1/4 |
+| 4  | subSubChild | 100     | 0/1 | 1/8 |
+| 5  | subChild-2  | 100     | 1/4 | 3/8 |
+| 6  | child-2     | 100     | 1/2 | 3/4 |
+| 7  | lastChild   | 100     | 1/2 | 5/8 |
+
+
+
 ## Usage
 
 Even though the MPTT implementation provided in [`works.hacker.mptt`](https://github.com/hacker-works/mptt-jpa/tree/master/src/main/java/works/hacker/mptt) has no dependencies on Spring or other non-standard libraries, the project unit / integration tests are using Spring; and the demo application is a very-simple Spring Boot application too.
 
 [DEMO SPRING BOOT APP - BROWSE SOURCE CODE ON GITHUB](https://github.com/hacker-works/mptt-jpa/tree/develop/demo)
 
+**NOTE:** Instructions are completely analogical when using the *dyadic fractions*-implementation. Simply use the [`works.hacker.mptt.dyadic`](https://github.com/hacker-works/mptt-jpa/tree/master/src/main/java/works/hacker/mptt/dyadic/)-package in place of [`works.hacker.mptt.classic`](https://github.com/hacker-works/mptt-jpa/tree/master/src/main/java/works/hacker/mptt/classic/).
+
 To use `mptt-jpa`:
 1. Add the `works.hacker.mptt-jpa`-dependency to the `pom.xml` *(in case Maven is used)*.
-2. Add a custom entity-type by extending the [`works.hacker.mptt.MpttEntity`](https://github.com/hacker-works/mptt-jpa/blob/master/src/main/java/works/hacker/mptt/MpttEntity.java)-mapped superclass.
-3. Add a custom repository interface by extending the [`works.hacker.works.MpttRepository`](https://github.com/hacker-works/mptt-jpa/blob/master/src/main/java/works/hacker/mptt/MpttRepository.java)-interface.
-4. Add a custom repository implementation by extending the reference [`works.hacker.works.MpttRepositoryImpl`](https://github.com/hacker-works/mptt-jpa/blob/master/src/main/java/works/hacker/mptt/MpttRepositoryImpl.java)-implementation.
+2. Add a custom entity-type by extending the [`works.hacker.mptt.classic.MpttEntity`](https://github.com/hacker-works/mptt-jpa/blob/master/src/main/java/works/hacker/mptt/classic/MpttEntity.java)-mapped superclass.
+3. Add a custom repository interface by extending the [`works.hacker.works.MpttRepository`](https://github.com/hacker-works/mptt-jpa/blob/master/src/main/java/works/hacker/mptt/classic//MpttRepository.java)-interface.
+4. Add a custom repository implementation by extending the reference [`works.hacker.works.MpttRepositoryImpl`](https://github.com/hacker-works/mptt-jpa/blob/master/src/main/java/works/hacker/mptt/classic/MpttRepositoryImpl.java)-implementation.
 
 #### Add `mptt-jpa` to the POM
 
@@ -63,7 +93,7 @@ To use `mptt-jpa`:
 <dependency>
     <groupId>works.hacker</groupId>
     <artifactId>mptt-jpa</artifactId>
-    <version>0.0.5</version>
+    <version>0.1.1</version>
 </dependency>
 ``` 
 
@@ -71,49 +101,15 @@ To use `mptt-jpa`:
 
 ```java
 @Entity
-public class TagTree extends MpttEntity {
-  private static final String NO_NAME = "NO_NAME";
-
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private long id;
-
-  @Column(nullable = false)
-  private final String name;
-
+public class MpttNode extends MpttEntity {
+  // IMPORTANT! for some reason Hibernate requires a default constructor
   @SuppressWarnings({"Unused"})
-  public TagTree() { // IMPORTANT! for some reason Hibernate requires a default constructor
-    super(); // make sure to call super()
-    this.name = NO_NAME;
+  public MpttNode() {
+    super();
   }
 
-  public TagTree(String name) {
-    super(); // make sure to call super()
-    this.name = name;
-  }
-
-  public long getId() {
-    return id;
-  }
-
-  public String getName() {
-    return name;
-  }
-
-  @Override
-  public String toString() {
-    return String.format("%s (id: %d) %s", getName(),  getId(), super.toString());
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(this.toString());
-  }
-
-  @SuppressWarnings("EqualsWhichDoesntCheckParameterClass")
-  @Override
-  public boolean equals(Object o) {
-    return this.toString().equals(o.toString());
+  public MpttNode(String name) {
+    super(name);
   }
 }
 ```
@@ -123,7 +119,7 @@ public class TagTree extends MpttEntity {
 Declare you the interface of the custom repository:
 
 ```java
-public interface TagTreeRepositoryCustom extends MpttRepository<TagTree> {
+public interface MpttNodeRepositoryCustom extends MpttRepository<MpttNode> {
 }
 ```
 
@@ -132,8 +128,9 @@ In the tests and in the demo, the `MpttRepository`-functionality is added on top
 And then, the **Spring Data** original repository could include in addition to the `MpttRepository`-operations whatever needed query methods with the keywords supported by JPA.
 
 ```java
-public interface TagTreeRepository extends JpaRepository<TagTree, Long>, TagTreeRepositoryCustom {
-  TagTree findByName(String name);
+public interface MpttNodeRepository 
+    extends JpaRepository<MpttNode, Long>, MpttNodeRepositoryCustom {
+  MpttNode findByName(String name);
 }
 ```
 
@@ -143,8 +140,9 @@ Then the repository implementation is as simple as:
 
 ```java
 @Repository
-public class TagTreeRepositoryImpl extends MpttRepositoryImpl<TagTree> implements
-    TagTreeRepositoryCustom {
+public class MpttNodeRepositoryImpl 
+    extends MpttRepositoryImpl<MpttNode> 
+    implements MpttNodeRepositoryCustom {
 }
 ```
 
@@ -154,51 +152,52 @@ Inject dependency to your custom repository:
 
 ```java
 @Autowired
-private TagTreeRepository tagTreeRepo;
+private MpttRepository treeRepo;
 ```
 
 Due to the **Java Generics - Type Erasure**, you need to manually set the entity class prior using the repository:
 
 ```java
-tagTreeRepo.setEntityClass(TagTree.class);
+treeRepo.setEntityClass(MpttRepository.class);
 ```
 
 Now you can use the repository as a standard `JpaRepository<TagTree, Long>`:
 
 ```java
-var persistedTagTreeNodesCount = tagTreeRepo.count();
+var persistedTreeNodesCount = treeRepo.count();
 ```
 
 Or create the sample tree from **Fig. 1: Sample Tree Structure.**
 
 ```java
-TagTree root = new TagTree("root");
-Long treeId = tagTreeRepo.startTree(root);
+var root = new MpttNode("root");
+var treeId = treeRepo.startTree(root);
 
-TagTree child1 = new TagTree("child-1");
-tagTreeRepo.addChild(root, child1);
+var child1 = new MpttTree("child-1");
+treeRepo.addChild(root, child1);
 
-TagTree subChild1 = new TagTree("subChild-1");
-tagTreeRepo.addChild(child1, subChild1);
+var subChild1 = new MpttNode("subChild-1");
+treeRepo.addChild(child1, subChild1);
 
-TagTree subSubChild = new TagTree("subSubChild");
-tagTreeRepo.addChild(subChild1, subSubChild);
+var subSubChild = new MpttNode("subSubChild");
+treeRepo.addChild(subChild1, subSubChild);
 
-TagTree subChild2 = new TagTree("subChild-2");
-tagTreeRepo.addChild(child1, subChild2);
+var subChild2 = new MpttNode("subChild-2");
+treeRepo.addChild(child1, subChild2);
 
-TagTree child2 = new TagTree("child-2");
-tagTreeRepo.addChild(root, child2);
+var child2 = new MpttNode("child-2");
+treeRepo.addChild(root, child2);
 
-TagTree lastSubChild = new TagTree("lastSubChild");
-tagTreeRepo.addChild(child2, lastSubChild);
+var lastSubChild = new MpttNode("lastSubChild");
+treeRepo.addChild(child2, lastSubChild);
 ```
 
 You can print the tree to a string:
 
 ```java
-var root = tagTreeRepo.findTreeRoot(treeId);
-var fullTree = tagTreeRepo.printTree(root);
+var utils = new TreeUtils<>(treeRepo);
+var root = treeRepo.findTreeRoot(treeId);
+var fullTree = utils.printTree(root);
 ```
 
 The result would be a string containing a tree similar to the `tree` command line interface command:
@@ -217,8 +216,8 @@ The result would be a string containing a tree similar to the `tree` command lin
 You can print also a sub-tree:
 
 ```java
-var child1 = tagTreeRepo.findByName("child-1");
-var partialTree = tagTreeRepo.printTree(child1);
+var child1 = treeRepo.findByName("child-1");
+var partialTree = utils.printTree(child1);
 ```
 
 ...to get:
@@ -234,15 +233,15 @@ var partialTree = tagTreeRepo.printTree(child1);
 To get a sorted list of the direct children of a node:
 
 ```java
-var root = tagTreeRepo.findTreeRoot(treeId);
-var directChildren = tagTreeRepo.findChildren(root);
+var root = treeRepo.findTreeRoot(treeId);
+var directChildren = treeRepo.findChildren(root);
 ```
 
 To get the list of the ancestors of a node:
 
 ```java
-var subSubChild = tagTreeRepo.findByName("subSubChild");
-var ancestors = tagTreeRepo.findAncestors(subSubChild);
+var subSubChild = treeRepo.findByName("subSubChild");
+var ancestors = treeRepo.findAncestors(subSubChild);
 ```
 
 Works the same for the `findParent` and `findSubTree`-operations.
@@ -250,9 +249,9 @@ Works the same for the `findParent` and `findSubTree`-operations.
 To remove a child from a parent:
 
 ```java
-var root = tagTreeRepo.findByName("root");
-var child1 = tagTreeRepo.findByName("child-1");
-var removed = tagTreeRepo.removeChild(root, child1);
+var root = treeRepo.findByName("root");
+var child1 = treeRepo.findByName("child-1");
+var removed = treeRepo.removeChild(root, child1);
 ```
 
 The resulting tree should be:

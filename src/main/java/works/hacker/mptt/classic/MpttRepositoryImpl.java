@@ -1,16 +1,14 @@
-package works.hacker.mptt;
+package works.hacker.mptt.classic;
 
 import javax.persistence.EntityManager;
 import javax.persistence.NoResultException;
 import javax.persistence.PersistenceContext;
 import javax.persistence.TypedQuery;
 import javax.transaction.Transactional;
-import java.util.Collections;
+import java.lang.reflect.InvocationTargetException;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 @Transactional
 public abstract class MpttRepositoryImpl<T extends MpttEntity> implements MpttRepository<T> {
@@ -22,6 +20,13 @@ public abstract class MpttRepositoryImpl<T extends MpttEntity> implements MpttRe
   @Override
   public void setEntityClass(Class<T> entityClass) {
     this.entityClass = entityClass;
+  }
+
+  @Override
+  public T createNode(String name)
+      throws NoSuchMethodException, IllegalAccessException, InvocationTargetException,
+      InstantiationException {
+    return entityClass.getDeclaredConstructor(String.class).newInstance(name);
   }
 
   @Override
@@ -131,7 +136,7 @@ public abstract class MpttRepositoryImpl<T extends MpttEntity> implements MpttRe
 
   protected void ensureChildOfParent(T parent, T child) throws NodeNotChildOfParent, NodeNotInTree {
     if (parent.getLft() < child.getLft() && child.getRgt() < parent.getRgt()) {
-      if (!child.getTreeId().equals(parent.getTreeId())) {
+      if (child.getTreeId() != parent.getTreeId()) {
         throw new NodeNotInTree(
             String.format("Nodes not in same tree - parent: %s; child %s", parent, child));
       }
@@ -260,7 +265,7 @@ public abstract class MpttRepositoryImpl<T extends MpttEntity> implements MpttRe
   }
 
   @Override
-  public T findParent(T node) {
+  public Optional<T> findParent(T node) {
     var query = String.format(
         "SELECT node" +
             " FROM %s node" +
@@ -268,73 +273,12 @@ public abstract class MpttRepositoryImpl<T extends MpttEntity> implements MpttRe
             " AND node.lft < :lft AND :rgt < node.rgt" +
             " ORDER BY node.lft DESC",
         entityClass.getSimpleName());
-    return getSingleResultOrNull(
-        entityManager.createQuery(query, entityClass)
-            .setParameter("treeId", node.getTreeId())
-            .setParameter("lft", node.getLft())
-            .setParameter("rgt", node.getRgt())
-            .setMaxResults(1));
+    return entityManager.createQuery(query, entityClass)
+        .setParameter("treeId", node.getTreeId())
+        .setParameter("lft", node.getLft())
+        .setParameter("rgt", node.getRgt())
+        .setMaxResults(1)
+        .getResultList().stream().findFirst();
   }
 
-  @Override
-  public String printTree(T node) {
-    var rootString = printRootNode(node);
-
-    var children = findChildren(node);
-    var levels = Collections.unmodifiableList(Collections.singletonList(0));
-    var childrenString = children.isEmpty() ? "" :
-        "\n" +
-            IntStream.range(0, children.size())
-                .mapToObj(i -> i < children.size() - 1 ?
-                    printSubTree(children.get(i), levels, false) :
-                    printSubTree(children.get(i), levels, true))
-                .collect(Collectors.joining("\n"));
-
-    return rootString + childrenString;
-  }
-
-  protected String printSubTree(T node, List<Integer> levels, boolean isLast) {
-    var children = findChildren(node);
-    var nextLevels = concatLevel(levels, isLast ? 0 : 1);
-    return
-        (isLast ? printLastChildNode(node, levels) : printChildNode(node, levels)) +
-            (children.isEmpty() ? "" : "\n" +
-                IntStream.range(0, children.size())
-                    .mapToObj(i -> i < children.size() - 1 ?
-                        printSubTree(children.get(i), nextLevels, false) :
-                        printSubTree(children.get(i), nextLevels, true))
-                    .collect(Collectors.joining("\n")));
-  }
-
-  protected List<Integer> concatLevel(List<Integer> levels, Integer level) {
-    return Stream.concat(levels.stream(), Stream.of(level))
-        .collect(Collectors.toList());
-  }
-
-  protected String printRootNode(T node) {
-    return String.format(
-        // @formatter:off
-        ".\n" +
-            "└── %s",
-        // @formatter:on
-        node.toString());
-  }
-
-  protected String printChildNode(T node, List<Integer> levels) {
-    return String.format("%s├── %s",
-        printLevelPrefix(levels),
-        node.toString());
-  }
-
-  protected String printLastChildNode(T node, List<Integer> levels) {
-    return String.format("%s└── %s",
-        printLevelPrefix(levels),
-        node.toString());
-  }
-
-  protected String printLevelPrefix(List<Integer> levels) {
-    return levels.stream()
-        .map(i -> i == 0 ? "    " : "│   ")
-        .collect(Collectors.joining());
-  }
 }
