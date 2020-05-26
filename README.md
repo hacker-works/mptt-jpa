@@ -93,7 +93,7 @@ To use `mptt-jpa`:
 <dependency>
     <groupId>works.hacker</groupId>
     <artifactId>mptt-jpa</artifactId>
-    <version>0.1.0</version>
+    <version>0.1.1</version>
 </dependency>
 ``` 
 
