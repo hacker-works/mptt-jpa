@@ -3,11 +3,13 @@ package works.hacker.mptt.dyadic;
 import javax.persistence.EntityManager;
 import javax.persistence.NoResultException;
 import javax.persistence.PersistenceContext;
+import javax.transaction.Transactional;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 
+@Transactional
 public abstract class DyadicRepositoryImpl<T extends DyadicEntity> implements DyadicRepository<T> {
   @PersistenceContext
   EntityManager entityManager;
